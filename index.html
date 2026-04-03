@@ -246,7 +246,7 @@
                 </div>
             </div>
 
-            <!-- Movimientos con Swipe -->
+            <!-- Movimientos con Swipe y Botones Editar/Eliminar -->
             <div class="space-y-4">
                 <div class="flex justify-between items-end px-1">
                     <h3 class="text-zinc-400 font-black text-[10px] uppercase tracking-widest">Actividad Reciente</h3>
@@ -475,13 +475,59 @@
         </div>
     </div>
 
+    <!-- MODAL: EDITAR MOVIMIENTO -->
+    <div id="modal-edit" class="fixed inset-0 z-[60] hidden bg-zinc-950/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6 transition-all">
+        <div class="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-black tracking-tight">Editar Registro</h2>
+                <button onclick="closeModal('edit')" class="bg-zinc-100 dark:bg-zinc-800 p-2 rounded-full"><i data-lucide="x" size="20"></i></button>
+            </div>
+
+            <div class="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl gap-1">
+                <button id="edit-type-gasto" onclick="setEditFormType('gasto')" class="flex-1 py-3 text-sm font-bold rounded-xl transition-all bg-rose-500 text-white shadow-lg">Gasto</button>
+                <button id="edit-type-ingreso" onclick="setEditFormType('ingreso')" class="flex-1 py-3 text-sm font-bold rounded-xl transition-all text-zinc-500">Ingreso</button>
+            </div>
+
+            <div class="space-y-6">
+                <div class="text-center">
+                    <label class="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-2 block">Monto Total (ARS)</label>
+                    <input id="edit-amount" type="number" step="0.01" class="w-full text-5xl font-black text-center bg-transparent outline-none placeholder-zinc-200 dark:placeholder-zinc-700" placeholder="0,00">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black uppercase text-zinc-400 tracking-widest ml-1 block">Categoría</label>
+                        <select id="edit-category" class="w-full p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl font-bold appearance-none outline-none focus:ring-2 ring-emerald-500/20 border border-zinc-100 dark:border-zinc-700"></select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black uppercase text-zinc-400 tracking-widest ml-1 block">Cuenta</label>
+                        <select id="edit-account" class="w-full p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl font-bold appearance-none outline-none focus:ring-2 ring-emerald-500/20 border border-zinc-100 dark:border-zinc-700"></select>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase text-zinc-400 tracking-widest ml-1 block">Fecha y Hora</label>
+                    <input id="edit-datetime" type="datetime-local" class="w-full p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl font-bold border border-zinc-100 dark:border-zinc-700 outline-none">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase text-zinc-400 tracking-widest ml-1 block">Nota o Descripción</label>
+                    <input id="edit-note" type="text" class="w-full p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl font-bold border border-zinc-100 dark:border-zinc-700 outline-none">
+                </div>
+
+                <button onclick="updateTransaction()" id="btn-update" class="w-full py-5 bg-emerald-600 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-emerald-100 active:scale-95 transition-all">
+                    Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: CATEGORÍA CON IMAGEN -->
     <div id="modal-category" class="fixed inset-0 z-[60] hidden bg-zinc-950/40 backdrop-blur-sm flex items-center justify-center p-6 overflow-y-auto">
         <div class="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] p-6 space-y-4 modal-enter">
             <h3 id="category-modal-title" class="font-black text-xl">Nueva Categoría</h3>
             <input id="category-name" type="text" placeholder="Nombre de la categoría" class="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
             
-            <!-- Selector de ícono Lucide -->
             <select id="category-icon" class="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
                 <option value="heart">❤️ Salud</option>
                 <option value="gamepad-2">🎮 Ocio</option>
@@ -505,7 +551,6 @@
                 <option value="dollar-sign">💰 Inversiones</option>
             </select>
             
-            <!-- Subir imagen personalizada -->
             <div class="space-y-2">
                 <label class="text-xs font-bold text-zinc-600 dark:text-zinc-400">O sube una imagen personalizada</label>
                 <input type="file" id="category-image-input" accept="image/*" class="w-full p-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-sm">
@@ -585,7 +630,8 @@
             filteredTransactions: [],
             lockPinBuffer: '',
             changePinBuffer: '',
-            tempCategoryImage: null
+            tempCategoryImage: null,
+            editingTransactionId: null
         };
 
         // Inicializar presupuestos por defecto
@@ -612,7 +658,6 @@
                 showLockScreen();
             }
             
-            // Configurar sección de descuento inicial
             updateDiscountSection();
         }
         
@@ -839,7 +884,6 @@
             }
             openModal('category');
             
-            // Configurar evento de imagen
             const imageInput = document.getElementById('category-image-input');
             imageInput.onchange = function(e) {
                 const file = e.target.files[0];
@@ -922,7 +966,7 @@
             renderAccounts();
             renderStats();
             renderSavingsGoals();
-            renderBudgets();
+            renderBudgets();  // Esto ya muestra el total gastado por categoría
             renderCategoriesManager();
             updateChart();
             lucide.createIcons();
@@ -951,40 +995,166 @@
                 return;
             }
 
-            data.slice(0, 10).forEach((tx, i) => {
+            data.slice(0, 20).forEach((tx) => {
                 const cat = state.categories.find(c => c.id === tx.catId) || { icon: 'info', color: 'bg-zinc-400', name: 'Otro', imageData: null };
                 const account = state.accounts.find(a => a.id === tx.accId);
                 const typeColor = tx.type === 'gasto' ? 'text-rose-500' : (tx.type === 'reintegro' ? 'text-blue-500' : 'text-emerald-600');
                 const typeIcon = tx.type === 'gasto' ? '-' : (tx.type === 'reintegro' ? '↺' : '+');
                 
                 container.innerHTML += `
-                    <div class="swipe-item group" id="tx-${tx.id}">
-                        <div class="absolute right-0 top-0 bottom-0 w-20 bg-rose-500 rounded-3xl flex items-center justify-center text-white cursor-pointer" onclick="deleteTx('${tx.id}')">
-                            <i data-lucide="trash-2"></i>
-                        </div>
-                        <div class="swipe-content bg-white dark:bg-zinc-900 p-4 rounded-[1.8rem] border border-zinc-100 dark:border-zinc-800 flex items-center justify-between relative z-10 shadow-sm hover:border-emerald-100 transition-colors">
-                            <div class="flex items-center gap-4">
-                                ${cat.imageData ? 
-                                    `<img src="${cat.imageData}" class="w-10 h-10 rounded-xl object-cover">` :
-                                    `<div class="${cat.color} p-3 rounded-2xl text-white shadow-lg">
-                                        <i data-lucide="${cat.icon}" size="18"></i>
-                                    </div>`
-                                }
-                                <div>
-                                    <p class="font-bold text-sm">${tx.note || cat.name}</p>
-                                    <p class="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">${new Date(tx.date).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                                    <p class="text-[8px] text-zinc-500">${account?.name || ''}</p>
-                                    ${tx.discount ? `<p class="text-[8px] text-emerald-500">Descuento: ${tx.discountValue} ${tx.discountType === 'percentage' ? '%' : 'ARS'}</p>` : ''}
-                                </div>
+                    <div class="bg-white dark:bg-zinc-900 p-4 rounded-[1.8rem] border border-zinc-100 dark:border-zinc-800 flex items-center justify-between shadow-sm hover:border-emerald-100 transition-colors">
+                        <div class="flex items-center gap-4 flex-1">
+                            ${cat.imageData ? 
+                                `<img src="${cat.imageData}" class="w-10 h-10 rounded-xl object-cover">` :
+                                `<div class="${cat.color} p-3 rounded-2xl text-white shadow-lg">
+                                    <i data-lucide="${cat.icon}" size="18"></i>
+                                </div>`
+                            }
+                            <div>
+                                <p class="font-bold text-sm">${tx.note || cat.name}</p>
+                                <p class="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">${new Date(tx.date).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                                <p class="text-[8px] text-zinc-500">${account?.name || ''}</p>
+                                ${tx.discount ? `<p class="text-[8px] text-emerald-500">Descuento: ${tx.discountValue} ${tx.discountType === 'percentage' ? '%' : 'ARS'}</p>` : ''}
                             </div>
-                            <p class="font-black ${typeColor}">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openEditModal('${tx.id}')" class="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 rounded-xl"><i data-lucide="edit-2" size="16"></i></button>
+                            <button onclick="deleteTx('${tx.id}')" class="p-2 text-rose-600 bg-rose-50 dark:bg-rose-900/30 rounded-xl"><i data-lucide="trash-2" size="16"></i></button>
+                            <p class="font-black ${typeColor} ml-2">
                                 ${typeIcon}${formatCurrency(tx.amount)}
                             </p>
                         </div>
                     </div>
                 `;
             });
-            initSwipeLogic();
+            lucide.createIcons();
+        }
+
+        // --- EDITAR TRANSACCIÓN ---
+        function openEditModal(txId) {
+            const tx = state.transactions.find(t => t.id === txId);
+            if(!tx) return;
+            state.editingTransactionId = txId;
+            
+            // Llenar selects
+            const catSelect = document.getElementById('edit-category');
+            const accSelect = document.getElementById('edit-account');
+            catSelect.innerHTML = state.categories.map(c => `<option value="${c.id}" ${c.id === tx.catId ? 'selected' : ''}>${c.name}</option>`).join('');
+            accSelect.innerHTML = state.accounts.map(a => `<option value="${a.id}" ${a.id === tx.accId ? 'selected' : ''}>${a.name}</option>`).join('');
+            
+            document.getElementById('edit-amount').value = tx.amount;
+            document.getElementById('edit-note').value = tx.note || '';
+            // Formatear datetime-local
+            const dateObj = new Date(tx.date);
+            const formattedDate = dateObj.toISOString().slice(0, 16);
+            document.getElementById('edit-datetime').value = formattedDate;
+            
+            // Configurar tipo
+            setEditFormType(tx.type);
+            
+            openModal('edit');
+        }
+        
+        function setEditFormType(type) {
+            const btnGasto = document.getElementById('edit-type-gasto');
+            const btnIngreso = document.getElementById('edit-type-ingreso');
+            const btnUpdate = document.getElementById('btn-update');
+            
+            if(type === 'gasto') {
+                btnGasto.className = "flex-1 py-3 text-sm font-bold rounded-xl bg-rose-500 text-white shadow-lg";
+                btnIngreso.className = "flex-1 py-3 text-sm font-bold rounded-xl text-zinc-500";
+                btnUpdate.className = "w-full py-5 bg-rose-500 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-rose-100 active:scale-95 transition-all";
+                btnUpdate.textContent = "Actualizar Gasto";
+            } else {
+                btnGasto.className = "flex-1 py-3 text-sm font-bold rounded-xl text-zinc-500";
+                btnIngreso.className = "flex-1 py-3 text-sm font-bold rounded-xl bg-emerald-600 text-white shadow-lg";
+                btnUpdate.className = "w-full py-5 bg-emerald-600 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-emerald-100 active:scale-95 transition-all";
+                btnUpdate.textContent = "Actualizar Ingreso";
+            }
+        }
+        
+        function updateTransaction() {
+            const txId = state.editingTransactionId;
+            const oldTx = state.transactions.find(t => t.id === txId);
+            if(!oldTx) return;
+            
+            const newAmount = parseFloat(document.getElementById('edit-amount').value);
+            const newCatId = document.getElementById('edit-category').value;
+            const newAccId = document.getElementById('edit-account').value;
+            const newNote = document.getElementById('edit-note').value;
+            const newDate = document.getElementById('edit-datetime').value;
+            const newType = document.getElementById('edit-type-gasto').classList.contains('bg-rose-500') ? 'gasto' : 'ingreso';
+            
+            if(!newAmount || newAmount <= 0) {
+                notify("Monto inválido");
+                return;
+            }
+            
+            // Revertir efectos de la transacción vieja en las cuentas
+            const oldAccount = state.accounts.find(a => a.id === oldTx.accId);
+            if(oldTx.type === 'gasto') oldAccount.balance += oldTx.amount;
+            else if(oldTx.type === 'reintegro') oldAccount.balance -= oldTx.amount;
+            else oldAccount.balance -= oldTx.amount;
+            
+            // Si había reintegro asociado, también revertirlo
+            const linkedRefund = state.transactions.find(t => t.parentTxId === txId);
+            if(linkedRefund) {
+                const refundAcc = state.accounts.find(a => a.id === linkedRefund.accId);
+                refundAcc.balance -= linkedRefund.amount;
+                state.transactions = state.transactions.filter(t => t.id !== linkedRefund.id);
+            }
+            
+            // Crear nueva transacción
+            const updatedTx = {
+                ...oldTx,
+                amount: newAmount,
+                catId: newCatId,
+                accId: newAccId,
+                note: newNote,
+                date: newDate ? new Date(newDate).toISOString() : new Date().toISOString(),
+                type: newType
+            };
+            
+            // Aplicar efecto de la nueva transacción
+            const newAccount = state.accounts.find(a => a.id === newAccId);
+            if(newType === 'gasto') newAccount.balance -= newAmount;
+            else newAccount.balance += newAmount;
+            
+            // Reemplazar en el array
+            const index = state.transactions.findIndex(t => t.id === txId);
+            if(index !== -1) {
+                state.transactions[index] = updatedTx;
+            }
+            
+            persist();
+            closeModal('edit');
+            renderAll();
+            notify("Transacción actualizada ✅");
+        }
+
+        // --- ELIMINAR TRANSACCIÓN (mejorada para manejar reintegros)---
+        function deleteTx(id) {
+            if(!confirm("¿Eliminar este registro?")) return;
+            const tx = state.transactions.find(t => t.id === id);
+            if(!tx) return;
+            const acc = state.accounts.find(a => a.id === tx.accId);
+            
+            if(tx.type === 'gasto') acc.balance += tx.amount;
+            else if(tx.type === 'reintegro') acc.balance -= tx.amount;
+            else acc.balance -= tx.amount;
+
+            // Eliminar también reintegro asociado
+            const linkedRefund = state.transactions.find(t => t.parentTxId === id);
+            if(linkedRefund) {
+                const refundAcc = state.accounts.find(a => a.id === linkedRefund.accId);
+                refundAcc.balance -= linkedRefund.amount;
+                state.transactions = state.transactions.filter(t => t.id !== linkedRefund.id);
+            }
+
+            state.transactions = state.transactions.filter(t => t.id !== id);
+            persist();
+            renderAll();
+            notify("Movimiento eliminado 🗑️");
         }
 
         function renderCalendarWithAmounts() {
@@ -1001,7 +1171,6 @@
             const total = new Date(year, month + 1, 0).getDate();
             const today = new Date();
 
-            // Agrupar transacciones por día
             const dailyTotals = {};
             state.transactions.forEach(tx => {
                 const txDate = new Date(tx.date);
@@ -1156,8 +1325,14 @@
                 return `
                     <div class="space-y-1">
                         <div class="flex justify-between text-[11px]">
-                            <span class="font-bold">${cat.name}</span>
-                            <span class="${isOverBudget ? 'text-rose-500' : 'text-emerald-600'}">${formatCurrency(spent)} / ${formatCurrency(budget)}</span>
+                            <div class="flex items-center gap-2">
+                                ${cat.imageData ? 
+                                    `<img src="${cat.imageData}" class="w-4 h-4 rounded object-cover">` :
+                                    `<i data-lucide="${cat.icon}" size="12" class="${cat.color.replace('bg', 'text').replace('-500', '')}"></i>`
+                                }
+                                <span class="font-bold">${cat.name}</span>
+                            </div>
+                            <span class="${isOverBudget ? 'text-rose-500' : 'text-emerald-600'} font-bold">${formatCurrency(spent)} / ${formatCurrency(budget)}</span>
                         </div>
                         <div class="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                             <div class="h-full ${isOverBudget ? 'bg-rose-500' : 'bg-emerald-600'} progress-bar" style="width: ${Math.min(percent, 100)}%"></div>
@@ -1165,6 +1340,7 @@
                     </div>
                 `;
             }).join('');
+            lucide.createIcons();
         }
 
         function updateChart() {
@@ -1278,7 +1454,6 @@
             let refundAmount = 0;
             let discountInfo = null;
 
-            // Calcular descuento solo para gastos
             if(state.formType === 'gasto' && discountValue > 0) {
                 if(state.discountType === 'percentage') {
                     const discountAmount = amount * (discountValue / 100);
@@ -1295,7 +1470,6 @@
                 if(refundAmount < 0) refundAmount = 0;
             }
 
-            // Crear transacción de gasto
             const tx = {
                 id: 'tx-' + Date.now(),
                 amount: finalAmount,
@@ -1310,12 +1484,9 @@
                 discountValue: discountValue
             };
 
-            // Actualizar cuenta con el gasto
             const acc = state.accounts.find(a => a.id === accId);
             if(state.formType === 'gasto') {
                 acc.balance -= finalAmount;
-                
-                // Si hay descuento, crear un reintegro automático
                 if(refundAmount > 0) {
                     const refundTx = {
                         id: 'refund-' + Date.now(),
@@ -1345,7 +1516,6 @@
                 notify(`${state.formType === 'gasto' ? 'Gasto' : 'Ingreso'} registrado ✅`);
             }
             
-            // Resetear campos
             document.getElementById('input-amount').value = '';
             document.getElementById('input-note').value = '';
             if(document.getElementById('input-discount')) {
@@ -1353,28 +1523,6 @@
             }
             const now = new Date();
             document.getElementById('input-datetime').value = now.toISOString().slice(0, 16);
-        }
-
-        function deleteTx(id) {
-            const tx = state.transactions.find(t => t.id === id);
-            const acc = state.accounts.find(a => a.id === tx.accId);
-            
-            if(tx.type === 'gasto') acc.balance += tx.amount;
-            else if(tx.type === 'reintegro') acc.balance -= tx.amount;
-            else acc.balance -= tx.amount;
-
-            // También eliminar reintegro asociado si existe
-            const linkedRefund = state.transactions.find(t => t.parentTxId === id);
-            if(linkedRefund) {
-                const refundAcc = state.accounts.find(a => a.id === linkedRefund.accId);
-                refundAcc.balance -= linkedRefund.amount;
-                state.transactions = state.transactions.filter(t => t.id !== linkedRefund.id);
-            }
-
-            state.transactions = state.transactions.filter(t => t.id !== id);
-            persist();
-            renderAll();
-            notify("Movimiento eliminado 🗑️");
         }
 
         function addAccount() {
@@ -1505,6 +1653,7 @@
         function closeModal(m) {
             const modal = document.getElementById(`modal-${m}`);
             if(modal) modal.classList.add('hidden');
+            if(m === 'edit') state.editingTransactionId = null;
         }
 
         function setFormType(t) {
@@ -1666,24 +1815,6 @@
             setTimeout(() => {
                 t.className = "fixed top-8 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl bg-zinc-900 text-white text-sm font-bold shadow-2xl opacity-0 translate-y-[-20px] transition-all duration-300 pointer-events-none";
             }, 3000);
-        }
-
-        function initSwipeLogic() {
-            document.querySelectorAll('.swipe-item').forEach(item => {
-                const content = item.querySelector('.swipe-content');
-                let startX = 0;
-                item.addEventListener('touchstart', e => startX = e.touches[0].clientX);
-                item.addEventListener('touchmove', e => {
-                    const diff = e.touches[0].clientX - startX;
-                    if(diff < -20) content.style.transform = `translateX(${Math.max(diff, -80)}px)`;
-                    else content.style.transform = `translateX(0px)`;
-                });
-                item.addEventListener('touchend', e => {
-                    const diff = e.changedTouches[0].clientX - startX;
-                    if(diff < -50) content.style.transform = `translateX(-80px)`;
-                    else content.style.transform = `translateX(0px)`;
-                });
-            });
         }
 
         function navMonth(v) {
