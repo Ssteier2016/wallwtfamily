@@ -2,12 +2,14 @@
 // CONFIGURACIÓN DE FIREBASE (REEMPLAZAR CON TUS DATOS)
 // ============================================
 const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "TU_AUTH_DOMAIN",
-    projectId: "TU_PROJECT_ID",
-    storageBucket: "TU_STORAGE_BUCKET",
-    messagingSenderId: "TU_SENDER_ID",
-    appId: "TU_APP_ID"
+        apiKey: "AIzaSyBxMzw8I7nc7e29X1xQoH2kgGHIiHzLUGo",
+        authDomain: "presupuesto-familiar-15478.firebaseapp.com",
+        databaseURL: "https://presupuesto-familiar-15478-default-rtdb.firebaseio.com",
+        projectId: "presupuesto-familiar-15478",
+        storageBucket: "presupuesto-familiar-15478.firebasestorage.app",
+        messagingSenderId: "436445257047",
+        appId: "1:436445257047:web:e692e018781bbdeb7c3212",
+        measurementId: "G-CBPM2XMB67"
 };
 
 // Inicializar Firebase solo si tenemos configuración válida
