@@ -6,7 +6,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'https://w
 import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ============================================
-// CONFIGURACIÓN DE FIREBASE (TUS DATOS REALES)
+// CONFIGURACIÓN DE FIREBASE
 // ============================================
 const firebaseConfig = {
     apiKey: "AIzaSyBxMzw8I7nc7e29X1xQoH2kgGHIiHzLUGo",
@@ -61,7 +61,7 @@ const defaultAccounts = [
 let currentUser = null;
 let syncEnabled = false;
 
-// ========== INICIALIZACIÓN LOCAL CON VALIDACIONES ==========
+// ========== INICIALIZACIÓN LOCAL ==========
 function initializeData() {
     try {
         const savedTransactions = localStorage.getItem('finanzas_transactions');
@@ -80,7 +80,6 @@ function initializeData() {
         btcHoldings = savedBtc ? parseFloat(savedBtc) : 0;
         btcHistory = savedBtcHistory ? JSON.parse(savedBtcHistory) : [];
         
-        // Validar que sean arrays
         if (!Array.isArray(transactions)) transactions = [];
         if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
         if (!Array.isArray(categories)) categories = JSON.parse(JSON.stringify(defaultCategories));
@@ -92,7 +91,6 @@ function initializeData() {
         saveToLocalStorage();
     } catch(e) {
         console.error("Error inicializando datos:", e);
-        // Resetear a valores por defecto
         transactions = [];
         accounts = JSON.parse(JSON.stringify(defaultAccounts));
         categories = JSON.parse(JSON.stringify(defaultCategories));
@@ -267,7 +265,7 @@ function deleteTransaction(id) {
     return true;
 }
 
-// ========== CRUD CUENTAS (con imagen URL) ==========
+// ========== CRUD CUENTAS ==========
 function addAccount(account) {
     const newAccount = {
         id: 'acc-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
@@ -309,7 +307,7 @@ function deleteAccount(id) {
     return true;
 }
 
-// ========== CRUD CATEGORÍAS (con imagen URL) ==========
+// ========== CRUD CATEGORÍAS ==========
 function addCategory(category) {
     const newCategory = {
         id: 'cat-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
@@ -383,7 +381,7 @@ function deleteBudget(id) {
     showToast('Presupuesto eliminado', 'success');
 }
 
-// ========== CRUD METAS (con imagen URL) ==========
+// ========== CRUD METAS ==========
 function addGoal(goal) {
     const newGoal = {
         id: 'goal-' + Date.now(),
@@ -419,7 +417,7 @@ function deleteGoal(id) {
     showToast('Meta eliminada', 'success');
 }
 
-// ========== BITCOIN con historial ==========
+// ========== BITCOIN ==========
 let currentBTCPriceUSD = 0, currentBTCPriceARS = 0;
 
 async function updateBTCPrice() {
@@ -428,11 +426,16 @@ async function updateBTCPrice() {
         const data = await res.json();
         currentBTCPriceUSD = data.bitcoin.usd;
         currentBTCPriceARS = data.bitcoin.ars;
-        document.getElementById('btcPriceUSD').innerHTML = `$${currentBTCPriceUSD.toLocaleString()}`;
-        document.getElementById('btcPriceARS').innerHTML = `$${currentBTCPriceARS.toLocaleString()}`;
-        document.getElementById('totalBTC').innerHTML = btcHoldings.toFixed(8);
-        document.getElementById('btcValueUSD').innerHTML = formatCurrencyUSD(btcHoldings * currentBTCPriceUSD);
-        document.getElementById('btcValueARS').innerHTML = formatCurrency(btcHoldings * currentBTCPriceARS);
+        const btcPriceUSDElem = document.getElementById('btcPriceUSD');
+        const btcPriceARSElem = document.getElementById('btcPriceARS');
+        const totalBTCelem = document.getElementById('totalBTC');
+        const btcValueUSDelem = document.getElementById('btcValueUSD');
+        const btcValueARSelem = document.getElementById('btcValueARS');
+        if (btcPriceUSDElem) btcPriceUSDElem.innerHTML = `$${currentBTCPriceUSD.toLocaleString()}`;
+        if (btcPriceARSElem) btcPriceARSElem.innerHTML = `$${currentBTCPriceARS.toLocaleString()}`;
+        if (totalBTCelem) totalBTCelem.innerHTML = btcHoldings.toFixed(8);
+        if (btcValueUSDelem) btcValueUSDelem.innerHTML = formatCurrencyUSD(btcHoldings * currentBTCPriceUSD);
+        if (btcValueARSelem) btcValueARSelem.innerHTML = formatCurrency(btcHoldings * currentBTCPriceARS);
     } catch(e) { console.error(e); }
 }
 
@@ -537,9 +540,12 @@ function renderDashboard() {
         });
     }
     const totalBalance = totalIncome - totalExpense;
-    document.getElementById('totalBalance').innerHTML = formatCurrency(totalBalance);
-    document.getElementById('totalIncome').innerHTML = formatCurrency(totalIncome);
-    document.getElementById('totalExpense').innerHTML = formatCurrency(totalExpense);
+    const totalBalanceElem = document.getElementById('totalBalance');
+    const totalIncomeElem = document.getElementById('totalIncome');
+    const totalExpenseElem = document.getElementById('totalExpense');
+    if (totalBalanceElem) totalBalanceElem.innerHTML = formatCurrency(totalBalance);
+    if (totalIncomeElem) totalIncomeElem.innerHTML = formatCurrency(totalIncome);
+    if (totalExpenseElem) totalExpenseElem.innerHTML = formatCurrency(totalExpense);
     
     const recent = [...(Array.isArray(transactions) ? transactions : [])].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,5);
     const container = document.getElementById('recentTransactionsList');
@@ -799,7 +805,6 @@ function renderExpenseReport() {
         const byCat = {};
         gastos.forEach(t => {
             const catName = getCategoryName(t.catId);
-            const catImg = getCategoryImage(t.catId);
             byCat[catName] = (byCat[catName] || 0) + parseFloat(t.amount);
         });
         const labels = Object.keys(byCat);
@@ -825,7 +830,7 @@ function renderExpenseReport() {
         html += `<tr style="font-weight:bold; border-top:2px solid #ccc;"><td>Total</td><td>${formatCurrency(total)}</td><td>100%</td></tr></tbody></table>`;
         document.getElementById('expenseReportDetails').innerHTML = html;
     } else {
-        // por mes (acumulativo)
+        // por mes
         const monthlyData = {};
         gastos.forEach(t => {
             const monthKey = new Date(t.date).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' });
@@ -850,7 +855,7 @@ function renderExpenseReport() {
         document.getElementById('expenseReportDetails').innerHTML = html;
     }
     
-    // Historial de gastos (lista)
+    // Historial de gastos
     const historyContainer = document.getElementById('expenseHistoryList');
     if (historyContainer) {
         const sortedGastos = [...gastos].sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -914,9 +919,12 @@ async function loginWithGoogle() {
     try {
         const result = await signInWithPopup(auth, googleProvider);
         currentUser = result.user;
-        document.getElementById('userName').innerText = currentUser.displayName || currentUser.email;
-        document.getElementById('loginGoogleBtn').style.display = 'none';
-        document.getElementById('logoutBtn').style.display = 'flex';
+        const userNameSpan = document.getElementById('userName');
+        const loginBtn = document.getElementById('loginGoogleBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (userNameSpan) userNameSpan.innerText = currentUser.displayName || currentUser.email;
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = 'flex';
         syncEnabled = true;
         await loadFromCloud();
         showToast(`Bienvenido ${currentUser.displayName}`, "success");
@@ -928,9 +936,12 @@ async function logout() {
     await signOut(auth);
     currentUser = null;
     syncEnabled = false;
-    document.getElementById('userName').innerText = '';
-    document.getElementById('loginGoogleBtn').style.display = 'flex';
-    document.getElementById('logoutBtn').style.display = 'none';
+    const userNameSpan = document.getElementById('userName');
+    const loginBtn = document.getElementById('loginGoogleBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (userNameSpan) userNameSpan.innerText = '';
+    if (loginBtn) loginBtn.style.display = 'flex';
+    if (logoutBtn) logoutBtn.style.display = 'none';
     initializeData();
     refreshAllViews();
     showToast("Sesión cerrada", "success");
@@ -942,7 +953,7 @@ function formatCurrency(value) {
 }
 function formatDate(dateString) { const d = new Date(dateString); return d.toLocaleDateString('es-AR'); }
 function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
-function showToast(msg, type='success') { const toast = document.getElementById('toast'); toast.textContent = msg; toast.style.background = type === 'success' ? '#10b981' : '#ef4444'; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
+function showToast(msg, type='success') { const toast = document.getElementById('toast'); if (toast) { toast.textContent = msg; toast.style.background = type === 'success' ? '#10b981' : '#ef4444'; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); } }
 
 function updateFilters() {
     const accSelect = document.getElementById('filterAccount');
@@ -972,130 +983,71 @@ function updateBudgetMonthSelector() {
     }
 }
 
-// ========== MODALES (creación dinámica) ==========
-function ensureModals() {
-    const modals = [
-        { id: 'transactionModal', title: 'Nueva transacción', formId: 'transactionForm' },
-        { id: 'accountModal', title: 'Nueva billetera', formId: 'accountForm' },
-        { id: 'categoryModal', title: 'Nueva categoría', formId: 'categoryForm' },
-        { id: 'budgetModal', title: 'Presupuesto', formId: 'budgetForm' },
-        { id: 'goalModal', title: 'Meta de ahorro', formId: 'goalForm' }
-    ];
-    for (const m of modals) {
-        if (!document.getElementById(m.id)) {
-            const div = document.createElement('div');
-            div.id = m.id;
-            div.className = 'modal';
-            div.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>${m.title}</h3><button class="modal-close">&times;</button></div><form id="${m.formId}"><div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div></form></div>`;
-            document.body.appendChild(div);
-        }
-    }
-    // Transaction form completo
-    const txForm = document.getElementById('transactionForm');
-    if (txForm && txForm.children.length === 1) {
-        txForm.innerHTML = `
-            <input type="hidden" id="transactionId">
-            <div class="form-group"><label>Tipo</label><div class="type-toggle"><button type="button" class="type-btn active" data-type="gasto">Gasto</button><button type="button" class="type-btn" data-type="ingreso">Ingreso</button></div></div>
-            <div class="form-group"><label>Monto</label><input type="number" id="amount" step="0.01" required placeholder="0.00"></div>
-            <div class="form-group"><label>Fecha</label><input type="date" id="date" required></div>
-            <div class="form-group"><label>Categoría</label><select id="categoryId" required></select></div>
-            <div class="form-group"><label>Billetera</label><select id="accId" required></select></div>
-            <div class="form-group"><label>Nota / Comentario</label><textarea id="note" rows="2" placeholder="Opcional"></textarea></div>
-            <div class="form-group discount-group"><label><input type="checkbox" id="hasDiscount"> Aplicar descuento</label><div id="discountFields" style="display:none;"><div class="discount-type"><label><input type="radio" name="discountType" value="percent" checked> Porcentaje (%)</label><label><input type="radio" name="discountType" value="fixed"> Monto fijo</label></div><input type="number" id="discountValue" step="0.01" placeholder="Valor del descuento"></div></div>
-            <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
-        `;
-    }
-    // Account form
-    const accForm = document.getElementById('accountForm');
-    if (accForm && accForm.children.length === 1) {
-        accForm.innerHTML = `
-            <input type="hidden" id="accountId">
-            <div class="form-group"><label>Nombre</label><input type="text" id="accName" required placeholder="Ej: Principal, Ahorros"></div>
-            <div class="form-group"><label>Ícono (clase Font Awesome)</label><input type="text" id="accIcon" value="fa-wallet" placeholder="fa-wallet, fa-bank, etc."></div>
-            <div class="form-group"><label>Color</label><select id="accColor"><option value="bg-emerald-100 text-emerald-600">Verde</option><option value="bg-blue-100 text-blue-600">Azul</option><option value="bg-purple-100 text-purple-600">Morado</option><option value="bg-amber-100 text-amber-600">Ámbar</option><option value="bg-rose-100 text-rose-600">Rosa</option></select></div>
-            <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="accImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
-            <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
-        `;
-    }
-    // Category form
-    const catForm = document.getElementById('categoryForm');
-    if (catForm && catForm.children.length === 1) {
-        catForm.innerHTML = `
-            <input type="hidden" id="categoryId">
-            <div class="form-group"><label>Nombre</label><input type="text" id="catName" required></div>
-            <div class="form-group"><label>Color</label><input type="color" id="catColor" value="#10b981"></div>
-            <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="catImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
-            <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
-        `;
-    }
-    // Budget form
-    const budForm = document.getElementById('budgetForm');
-    if (budForm && budForm.children.length === 1) {
-        budForm.innerHTML = `
-            <input type="hidden" id="budgetId">
-            <div class="form-group"><label>Categoría</label><select id="budgetCategoryId" required></select></div>
-            <div class="form-group"><label>Monto presupuestado (ARS)</label><input type="number" id="budgetAmount" step="0.01" required></div>
-            <div class="form-group"><label>Mes</label><input type="month" id="budgetMonth" required></div>
-            <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
-        `;
-    }
-    // Goal form
-    const goalForm = document.getElementById('goalForm');
-    if (goalForm && goalForm.children.length === 1) {
-        goalForm.innerHTML = `
-            <input type="hidden" id="goalId">
-            <div class="form-group"><label>Nombre de la meta</label><input type="text" id="goalName" required></div>
-            <div class="form-group"><label>Monto objetivo (ARS)</label><input type="number" id="goalTarget" step="0.01" required></div>
-            <div class="form-group"><label>Color</label><input type="color" id="goalColor" value="#3b82f6"></div>
-            <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="goalImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
-            <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
-        `;
-    }
-}
+// ========== FUNCIONES GLOBALES PARA ONCLICK ==========
+window.deleteTransactionHandler = (id) => { if (confirm('¿Eliminar esta transacción?')) deleteTransaction(id); };
+window.deleteAccountHandler = (id) => { if (confirm('¿Eliminar esta billetera?')) deleteAccount(id); };
+window.deleteCategoryHandler = (id) => { if (confirm('¿Eliminar esta categoría?')) deleteCategory(id); };
+window.deleteBudget = (id) => { if (confirm('¿Eliminar este presupuesto?')) deleteBudget(id); };
+window.deleteGoalHandler = (id) => { if (confirm('¿Eliminar esta meta?')) deleteGoal(id); };
 
-let currentModal = null;
-function openModal(id) { const m = document.getElementById(id); if (m) { m.classList.add('active'); currentModal = m; } }
-function closeModal() { if (currentModal) { currentModal.classList.remove('active'); currentModal = null; } }
-
-function openTransactionModal(id = null) {
-    ensureModals(); updateFilters();
+window.editTransaction = (id) => {
+    const modal = document.getElementById('transactionModal');
+    if (!modal) return;
+    document.getElementById('modalTitle').innerText = id ? 'Editar transacción' : 'Nueva transacción';
     document.getElementById('transactionId').value = id || '';
     document.getElementById('date').value = new Date().toISOString().split('T')[0];
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.type-btn[data-type="gasto"]').classList.add('active');
+    const gastoBtn = document.querySelector('.type-btn[data-type="gasto"]');
+    if (gastoBtn) gastoBtn.classList.add('active');
+    updateFilters();
     if (id) {
         const t = transactions.find(tx => tx.id === id);
         if (t) {
-            document.getElementById('amount').value = t.amount;
-            document.getElementById('date').value = t.date.split('T')[0];
-            document.getElementById('categoryId').value = t.catId;
-            document.getElementById('accId').value = t.accId;
-            document.getElementById('note').value = t.note || '';
-            document.querySelector(`.type-btn[data-type="${t.type}"]`).classList.add('active');
+            const amountInput = document.getElementById('amount');
+            const dateInput = document.getElementById('date');
+            const catSelect = document.getElementById('categoryId');
+            const accSelect = document.getElementById('accId');
+            const noteTextarea = document.getElementById('note');
+            if (amountInput) amountInput.value = t.amount;
+            if (dateInput) dateInput.value = t.date.split('T')[0];
+            if (catSelect) catSelect.value = t.catId;
+            if (accSelect) accSelect.value = t.accId;
+            if (noteTextarea) noteTextarea.value = t.note || '';
+            const typeBtn = document.querySelector(`.type-btn[data-type="${t.type}"]`);
+            if (typeBtn) typeBtn.classList.add('active');
+            const hasDiscountCheck = document.getElementById('hasDiscount');
+            const discountFields = document.getElementById('discountFields');
+            const discountValueInput = document.getElementById('discountValue');
             if (t.discount) {
-                document.getElementById('hasDiscount').checked = true;
-                document.getElementById('discountFields').style.display = 'block';
+                if (hasDiscountCheck) hasDiscountCheck.checked = true;
+                if (discountFields) discountFields.style.display = 'block';
                 if (t.discountPercent) {
-                    document.querySelector('input[name="discountType"][value="percent"]').checked = true;
-                    document.getElementById('discountValue').value = t.discountPercent;
+                    const percentRadio = document.querySelector('input[name="discountType"][value="percent"]');
+                    if (percentRadio) percentRadio.checked = true;
+                    if (discountValueInput) discountValueInput.value = t.discountPercent;
                 } else {
-                    document.querySelector('input[name="discountType"][value="fixed"]').checked = true;
-                    document.getElementById('discountValue').value = t.discountFixed;
+                    const fixedRadio = document.querySelector('input[name="discountType"][value="fixed"]');
+                    if (fixedRadio) fixedRadio.checked = true;
+                    if (discountValueInput) discountValueInput.value = t.discountFixed;
                 }
             } else {
-                document.getElementById('hasDiscount').checked = false;
-                document.getElementById('discountFields').style.display = 'none';
+                if (hasDiscountCheck) hasDiscountCheck.checked = false;
+                if (discountFields) discountFields.style.display = 'none';
             }
         }
     } else {
+        document.getElementById('amount').value = '';
+        document.getElementById('note').value = '';
         document.getElementById('hasDiscount').checked = false;
         document.getElementById('discountFields').style.display = 'none';
     }
     openModal('transactionModal');
-}
+};
 
-function openAccountModal(id = null) {
-    ensureModals();
+window.editAccount = (id) => {
+    const modal = document.getElementById('accountModal');
+    if (!modal) return;
+    document.getElementById('accountModalTitle').innerText = id ? 'Editar billetera' : 'Nueva billetera';
     document.getElementById('accountId').value = id || '';
     if (id) {
         const acc = accounts.find(a => a.id === id);
@@ -1112,10 +1064,12 @@ function openAccountModal(id = null) {
         document.getElementById('accImageUrl').value = '';
     }
     openModal('accountModal');
-}
+};
 
-function openCategoryModal(id = null) {
-    ensureModals();
+window.editCategory = (id) => {
+    const modal = document.getElementById('categoryModal');
+    if (!modal) return;
+    document.getElementById('categoryModalTitle').innerText = id ? 'Editar categoría' : 'Nueva categoría';
     document.getElementById('categoryId').value = id || '';
     if (id) {
         const cat = categories.find(c => c.id === id);
@@ -1130,47 +1084,9 @@ function openCategoryModal(id = null) {
         document.getElementById('catImageUrl').value = '';
     }
     openModal('categoryModal');
-}
+};
 
-function openBudgetModal(id = null) {
-    ensureModals(); updateFilters();
-    document.getElementById('budgetId').value = id || '';
-    if (id) {
-        const b = budgets.find(b => b.id === id);
-        if (b) {
-            document.getElementById('budgetCategoryId').value = b.categoryId;
-            document.getElementById('budgetAmount').value = b.amount;
-            document.getElementById('budgetMonth').value = b.month;
-        }
-    } else {
-        document.getElementById('budgetCategoryId').value = '';
-        document.getElementById('budgetAmount').value = '';
-        document.getElementById('budgetMonth').value = new Date().toISOString().slice(0,7);
-    }
-    openModal('budgetModal');
-}
-
-function openGoalModal(id = null) {
-    ensureModals();
-    document.getElementById('goalId').value = id || '';
-    if (id) {
-        const g = goals.find(g => g.id === id);
-        if (g) {
-            document.getElementById('goalName').value = g.name;
-            document.getElementById('goalTarget').value = g.targetAmount;
-            document.getElementById('goalColor').value = g.color;
-            document.getElementById('goalImageUrl').value = g.imageUrl || '';
-        }
-    } else {
-        document.getElementById('goalName').value = '';
-        document.getElementById('goalTarget').value = '';
-        document.getElementById('goalColor').value = '#3b82f6';
-        document.getElementById('goalImageUrl').value = '';
-    }
-    openModal('goalModal');
-}
-
-function editGoal(id) {
+window.editGoal = (id) => {
     const goal = goals.find(g => g.id === id);
     if (!goal) return;
     const newAmount = prompt(`Editar progreso de "${goal.name}"\nMonto actual: ${formatCurrency(goal.currentAmount)}\nMonto objetivo: ${formatCurrency(goal.targetAmount)}\nIngrese el nuevo monto ahorrado:`, goal.currentAmount);
@@ -1180,39 +1096,44 @@ function editGoal(id) {
             updateGoal(id, { currentAmount: parsed });
         } else { showToast('Monto inválido', 'error'); }
     }
+};
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        window.currentModal = modal;
+    }
 }
 
-// Handlers globales
-window.deleteTransactionHandler = (id) => { if (confirm('¿Eliminar esta transacción?')) deleteTransaction(id); };
-window.deleteAccountHandler = (id) => { if (confirm('¿Eliminar esta billetera?')) deleteAccount(id); };
-window.deleteCategoryHandler = (id) => { if (confirm('¿Eliminar esta categoría?')) deleteCategory(id); };
-window.deleteBudget = (id) => { if (confirm('¿Eliminar este presupuesto?')) deleteBudget(id); };
-window.deleteGoalHandler = (id) => { if (confirm('¿Eliminar esta meta?')) deleteGoal(id); };
-window.editTransaction = openTransactionModal;
-window.editAccount = openAccountModal;
-window.editCategory = openCategoryModal;
-window.editGoal = editGoal;
+function closeModal() {
+    if (window.currentModal) {
+        window.currentModal.classList.remove('active');
+        window.currentModal = null;
+    }
+}
 
 function switchView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    const target = document.getElementById(`${viewId}View`);
-    if (target) target.classList.add('active');
+    const targetView = document.getElementById(`${viewId}View`);
+    if (targetView) targetView.classList.add('active');
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
         if (item.dataset.view === viewId) item.classList.add('active');
     });
     const titles = { dashboard:'Dashboard', transactions:'Transacciones', accounts:'Billeteras', categories:'Categorías', budgets:'Presupuestos', goals:'Metas', calendar:'Calendario', bitcoin:'Bitcoin', expenses:'Gastos' };
-    document.getElementById('currentViewTitle').innerText = titles[viewId] || 'Dashboard';
+    const titleElem = document.getElementById('currentViewTitle');
+    if (titleElem) titleElem.innerText = titles[viewId] || 'Dashboard';
     if (viewId === 'expenses') renderExpenseReport();
 }
 
 // ========== EVENT LISTENERS ==========
 document.addEventListener('DOMContentLoaded', () => {
-    ensureModals();
     initializeData();
     refreshAllViews();
     switchView('dashboard');
     
+    // Navegación
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', (e) => { e.preventDefault(); switchView(item.dataset.view); });
     });
@@ -1220,12 +1141,32 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (e) => { e.preventDefault(); switchView(link.dataset.view); });
     });
     
-    document.getElementById('addTransactionBtn')?.addEventListener('click', () => openTransactionModal());
-    document.getElementById('addTransactionBtn2')?.addEventListener('click', () => openTransactionModal());
-    document.getElementById('addAccountBtn')?.addEventListener('click', () => openAccountModal());
-    document.getElementById('addCategoryBtn')?.addEventListener('click', () => openCategoryModal());
-    document.getElementById('addBudgetBtn')?.addEventListener('click', () => openBudgetModal());
-    document.getElementById('addGoalBtn')?.addEventListener('click', () => openGoalModal());
+    // Botones de acción
+    document.getElementById('addTransactionBtn')?.addEventListener('click', () => window.editTransaction(null));
+    document.getElementById('addTransactionBtn2')?.addEventListener('click', () => window.editTransaction(null));
+    document.getElementById('addAccountBtn')?.addEventListener('click', () => window.editAccount(null));
+    document.getElementById('addCategoryBtn')?.addEventListener('click', () => window.editCategory(null));
+    document.getElementById('addBudgetBtn')?.addEventListener('click', () => {
+        const modal = document.getElementById('budgetModal');
+        if (modal) {
+            document.getElementById('budgetId').value = '';
+            document.getElementById('budgetCategoryId').value = '';
+            document.getElementById('budgetAmount').value = '';
+            document.getElementById('budgetMonth').value = new Date().toISOString().slice(0,7);
+            openModal('budgetModal');
+        }
+    });
+    document.getElementById('addGoalBtn')?.addEventListener('click', () => {
+        const modal = document.getElementById('goalModal');
+        if (modal) {
+            document.getElementById('goalId').value = '';
+            document.getElementById('goalName').value = '';
+            document.getElementById('goalTarget').value = '';
+            document.getElementById('goalColor').value = '#3b82f6';
+            document.getElementById('goalImageUrl').value = '';
+            openModal('goalModal');
+        }
+    });
     document.getElementById('importBackupBtn')?.addEventListener('click', () => {
         const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
         inp.onchange = (e) => { const file = e.target.files[0]; if (file) { const r = new FileReader(); r.onload = (ev) => importFromJSON(ev.target.result); r.readAsText(file); } };
@@ -1240,10 +1181,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('removeBtcBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('btcAmount')?.value); if(amt>0) removeBTC(amt); });
     document.getElementById('generateExpenseReportBtn')?.addEventListener('click', () => renderExpenseReport());
     document.getElementById('clearFilters')?.addEventListener('click', () => {
-        if(document.getElementById('filterType')) document.getElementById('filterType').value = 'all';
-        if(document.getElementById('filterAccount')) document.getElementById('filterAccount').value = 'all';
-        if(document.getElementById('filterCategory')) document.getElementById('filterCategory').value = 'all';
-        if(document.getElementById('filterMonth')) document.getElementById('filterMonth').value = '';
+        const filterType = document.getElementById('filterType');
+        const filterAccount = document.getElementById('filterAccount');
+        const filterCategory = document.getElementById('filterCategory');
+        const filterMonth = document.getElementById('filterMonth');
+        if (filterType) filterType.value = 'all';
+        if (filterAccount) filterAccount.value = 'all';
+        if (filterCategory) filterCategory.value = 'all';
+        if (filterMonth) filterMonth.value = '';
         renderTransactionsList();
     });
     document.getElementById('filterType')?.addEventListener('change', renderTransactionsList);
@@ -1306,8 +1251,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const categoryId = document.getElementById('budgetCategoryId').value;
         const amount = document.getElementById('budgetAmount').value;
         const month = document.getElementById('budgetMonth').value;
-        if (id) updateBudget(id, { categoryId, amount, month });
-        else addBudget({ categoryId, amount, month });
+        if (!categoryId || !amount || !month) { showToast("Completa todos los campos", "error"); return; }
+        if (id) updateBudget(id, { categoryId, amount: parseFloat(amount), month });
+        else addBudget({ categoryId, amount: parseFloat(amount), month });
         closeModal();
     });
     document.getElementById('goalForm')?.addEventListener('submit', (e) => {
@@ -1317,17 +1263,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetAmount = document.getElementById('goalTarget').value;
         const color = document.getElementById('goalColor').value;
         const imageUrl = document.getElementById('goalImageUrl').value;
-        if (id) updateGoal(id, { name, targetAmount, color, imageUrl });
-        else addGoal({ name, targetAmount, color, imageUrl });
+        if (!name || !targetAmount) { showToast("Completa los campos obligatorios", "error"); return; }
+        if (id) updateGoal(id, { name, targetAmount: parseFloat(targetAmount), color, imageUrl });
+        else addGoal({ name, targetAmount: parseFloat(targetAmount), color, imageUrl });
         closeModal();
     });
     
+    // Cerrar modales
     document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', closeModal));
     window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });
     document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
     document.getElementById('closeSidebar')?.addEventListener('click', () => document.getElementById('sidebar').classList.remove('open'));
     
-    // Type toggle (dinámico)
+    // Type toggle y descuento
     document.body.addEventListener('click', (e) => {
         if (e.target.classList.contains('type-btn')) {
             document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
