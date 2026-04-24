@@ -40,7 +40,7 @@ let categories = [];
 let budgets = [];
 let goals = [];
 let btcHoldings = 0;
-let btcHistory = []; // { id, amount, type, date, priceUSD, priceARS }
+let btcHistory = [];
 
 // Categorías por defecto con imagen
 const defaultCategories = [
@@ -61,26 +61,48 @@ const defaultAccounts = [
 let currentUser = null;
 let syncEnabled = false;
 
-// ========== INICIALIZACIÓN LOCAL ==========
+// ========== INICIALIZACIÓN LOCAL CON VALIDACIONES ==========
 function initializeData() {
-    const savedTransactions = localStorage.getItem('finanzas_transactions');
-    const savedAccounts = localStorage.getItem('finanzas_accounts');
-    const savedCategories = localStorage.getItem('finanzas_categories');
-    const savedBudgets = localStorage.getItem('finanzas_budgets');
-    const savedGoals = localStorage.getItem('finanzas_goals');
-    const savedBtc = localStorage.getItem('finanzas_btc');
-    const savedBtcHistory = localStorage.getItem('finanzas_btc_history');
-    
-    transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
-    accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
-    categories = savedCategories ? JSON.parse(savedCategories) : JSON.parse(JSON.stringify(defaultCategories));
-    budgets = savedBudgets ? JSON.parse(savedBudgets) : [];
-    goals = savedGoals ? JSON.parse(savedGoals) : [];
-    btcHoldings = savedBtc ? parseFloat(savedBtc) : 0;
-    btcHistory = savedBtcHistory ? JSON.parse(savedBtcHistory) : [];
-    
-    recalculateAllBalances();
-    saveToLocalStorage();
+    try {
+        const savedTransactions = localStorage.getItem('finanzas_transactions');
+        const savedAccounts = localStorage.getItem('finanzas_accounts');
+        const savedCategories = localStorage.getItem('finanzas_categories');
+        const savedBudgets = localStorage.getItem('finanzas_budgets');
+        const savedGoals = localStorage.getItem('finanzas_goals');
+        const savedBtc = localStorage.getItem('finanzas_btc');
+        const savedBtcHistory = localStorage.getItem('finanzas_btc_history');
+        
+        transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
+        accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
+        categories = savedCategories ? JSON.parse(savedCategories) : JSON.parse(JSON.stringify(defaultCategories));
+        budgets = savedBudgets ? JSON.parse(savedBudgets) : [];
+        goals = savedGoals ? JSON.parse(savedGoals) : [];
+        btcHoldings = savedBtc ? parseFloat(savedBtc) : 0;
+        btcHistory = savedBtcHistory ? JSON.parse(savedBtcHistory) : [];
+        
+        // Validar que sean arrays
+        if (!Array.isArray(transactions)) transactions = [];
+        if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
+        if (!Array.isArray(categories)) categories = JSON.parse(JSON.stringify(defaultCategories));
+        if (!Array.isArray(budgets)) budgets = [];
+        if (!Array.isArray(goals)) goals = [];
+        if (!Array.isArray(btcHistory)) btcHistory = [];
+        
+        recalculateAllBalances();
+        saveToLocalStorage();
+    } catch(e) {
+        console.error("Error inicializando datos:", e);
+        // Resetear a valores por defecto
+        transactions = [];
+        accounts = JSON.parse(JSON.stringify(defaultAccounts));
+        categories = JSON.parse(JSON.stringify(defaultCategories));
+        budgets = [];
+        goals = [];
+        btcHoldings = 0;
+        btcHistory = [];
+        recalculateAllBalances();
+        saveToLocalStorage();
+    }
 }
 
 function saveToLocalStorage() {
@@ -94,7 +116,9 @@ function saveToLocalStorage() {
 }
 
 function recalculateAllBalances() {
+    if (!Array.isArray(accounts)) accounts = [];
     accounts.forEach(acc => acc.balance = 0);
+    if (!Array.isArray(transactions)) transactions = [];
     transactions.forEach(t => {
         const acc = accounts.find(a => a.id === t.accId);
         if (acc) {
@@ -124,13 +148,13 @@ async function loadFromCloud() {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
             const data = docSnap.data();
-            transactions = data.transactions || [];
-            accounts = data.accounts || [];
-            categories = data.categories || [];
-            budgets = data.budgets || [];
-            goals = data.goals || [];
-            btcHoldings = data.btcHoldings || 0;
-            btcHistory = data.btcHistory || [];
+            transactions = Array.isArray(data.transactions) ? data.transactions : [];
+            accounts = Array.isArray(data.accounts) ? data.accounts : [];
+            categories = Array.isArray(data.categories) ? data.categories : [];
+            budgets = Array.isArray(data.budgets) ? data.budgets : [];
+            goals = Array.isArray(data.goals) ? data.goals : [];
+            btcHoldings = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
+            btcHistory = Array.isArray(data.btcHistory) ? data.btcHistory : [];
             recalculateAllBalances();
             saveToLocalStorage();
             refreshAllViews();
@@ -143,13 +167,13 @@ async function loadFromCloud() {
 function importFromJSON(jsonData) {
     try {
         const data = JSON.parse(jsonData);
-        if (data.transactions) transactions = data.transactions;
-        if (data.accounts) accounts = data.accounts;
-        if (data.categories) categories = data.categories;
-        if (data.budgets) budgets = data.budgets;
-        if (data.goals) goals = data.goals;
-        if (data.btcHoldings !== undefined) btcHoldings = data.btcHoldings;
-        if (data.btcHistory) btcHistory = data.btcHistory;
+        if (data.transactions && Array.isArray(data.transactions)) transactions = data.transactions;
+        if (data.accounts && Array.isArray(data.accounts)) accounts = data.accounts;
+        if (data.categories && Array.isArray(data.categories)) categories = data.categories;
+        if (data.budgets && Array.isArray(data.budgets)) budgets = data.budgets;
+        if (data.goals && Array.isArray(data.goals)) goals = data.goals;
+        if (typeof data.btcHoldings === 'number') btcHoldings = data.btcHoldings;
+        if (data.btcHistory && Array.isArray(data.btcHistory)) btcHistory = data.btcHistory;
         recalculateAllBalances();
         saveToLocalStorage();
         syncToCloud();
@@ -456,7 +480,7 @@ function removeBTC(amount) {
 function renderBTCHistory() {
     const container = document.getElementById('btcHistoryList');
     if (!container) return;
-    if (btcHistory.length === 0) {
+    if (!Array.isArray(btcHistory) || btcHistory.length === 0) {
         container.innerHTML = '<div class="empty-state">Sin movimientos de BTC</div>';
         return;
     }
@@ -505,17 +529,19 @@ function refreshAllViews() {
 
 function renderDashboard() {
     let totalIncome = 0, totalExpense = 0;
-    transactions.forEach(t => {
-        const amt = parseFloat(t.amount);
-        if (t.type === 'ingreso') totalIncome += amt;
-        else totalExpense += amt;
-    });
+    if (Array.isArray(transactions)) {
+        transactions.forEach(t => {
+            const amt = parseFloat(t.amount);
+            if (t.type === 'ingreso') totalIncome += amt;
+            else totalExpense += amt;
+        });
+    }
     const totalBalance = totalIncome - totalExpense;
     document.getElementById('totalBalance').innerHTML = formatCurrency(totalBalance);
     document.getElementById('totalIncome').innerHTML = formatCurrency(totalIncome);
     document.getElementById('totalExpense').innerHTML = formatCurrency(totalExpense);
     
-    const recent = [...transactions].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,5);
+    const recent = [...(Array.isArray(transactions) ? transactions : [])].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,5);
     const container = document.getElementById('recentTransactionsList');
     if (container) {
         container.innerHTML = recent.map(t => `
@@ -539,12 +565,14 @@ function updateExpenseChart() {
     const ctx = document.getElementById('expenseChart')?.getContext('2d');
     if (!ctx) return;
     const expensesByCat = {};
-    transactions.forEach(t => {
-        if (t.type === 'gasto') {
-            const catName = getCategoryName(t.catId);
-            expensesByCat[catName] = (expensesByCat[catName] || 0) + parseFloat(t.amount);
-        }
-    });
+    if (Array.isArray(transactions)) {
+        transactions.forEach(t => {
+            if (t.type === 'gasto') {
+                const catName = getCategoryName(t.catId);
+                expensesByCat[catName] = (expensesByCat[catName] || 0) + parseFloat(t.amount);
+            }
+        });
+    }
     const labels = Object.keys(expensesByCat);
     const data = Object.values(expensesByCat);
     const colors = labels.map((_, i) => `hsl(${(i * 360 / Math.max(labels.length,1)) % 360}, 70%, 60%)`);
@@ -580,7 +608,7 @@ function updateBalanceChart() {
 function renderTransactionsList() {
     const tbody = document.getElementById('transactionsList');
     if (!tbody) return;
-    let filtered = [...transactions];
+    let filtered = Array.isArray(transactions) ? [...transactions] : [];
     const typeFilter = document.getElementById('filterType')?.value;
     const accountFilter = document.getElementById('filterAccount')?.value;
     const categoryFilter = document.getElementById('filterCategory')?.value;
@@ -613,7 +641,7 @@ function renderTransactionsList() {
 function renderAccountsList() {
     const container = document.getElementById('accountsList');
     if (!container) return;
-    if (accounts.length === 0) { container.innerHTML = '<div class="empty-state">No hay billeteras. Crea una nueva.</div>'; return; }
+    if (!Array.isArray(accounts) || accounts.length === 0) { container.innerHTML = '<div class="empty-state">No hay billeteras. Crea una nueva.</div>'; return; }
     container.innerHTML = accounts.map(acc => `
         <div class="account-card">
             <div class="account-info">
@@ -633,7 +661,7 @@ function renderAccountsList() {
 function renderCategoriesList() {
     const container = document.getElementById('categoriesList');
     if (!container) return;
-    if (categories.length === 0) { container.innerHTML = '<div class="empty-state">No hay categorías. Crea una nueva.</div>'; return; }
+    if (!Array.isArray(categories) || categories.length === 0) { container.innerHTML = '<div class="empty-state">No hay categorías. Crea una nueva.</div>'; return; }
     container.innerHTML = categories.map(cat => `
         <div class="category-card">
             <div class="category-info" style="display:flex; align-items:center; gap:12px;">
@@ -651,6 +679,7 @@ function renderCategoriesList() {
 function renderBudgetsList() {
     const container = document.getElementById('budgetsList');
     if (!container) return;
+    if (!Array.isArray(budgets)) budgets = [];
     const selectedMonth = document.getElementById('budgetMonthSelect')?.value || new Date().toISOString().slice(0,7);
     const monthly = budgets.filter(b => b.month === selectedMonth);
     if (monthly.length === 0) {
@@ -661,7 +690,7 @@ function renderBudgetsList() {
         const cat = categories.find(c => c.id === b.categoryId);
         const catName = cat ? cat.name : 'Categoría';
         const catImg = cat ? (cat.imageUrl || '') : '';
-        const spent = transactions.filter(t => t.catId === b.categoryId && t.type === 'gasto' && t.date.slice(0,7) === selectedMonth).reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const spent = Array.isArray(transactions) ? transactions.filter(t => t.catId === b.categoryId && t.type === 'gasto' && t.date.slice(0,7) === selectedMonth).reduce((sum, t) => sum + parseFloat(t.amount), 0) : 0;
         const percent = (spent / b.amount) * 100;
         const exceeded = spent > b.amount;
         return `
@@ -684,7 +713,7 @@ function renderBudgetsList() {
 function renderGoalsList() {
     const container = document.getElementById('goalsList');
     if (!container) return;
-    if (goals.length === 0) { container.innerHTML = '<div class="empty-state">Sin metas. Crea una meta de ahorro.</div>'; return; }
+    if (!Array.isArray(goals) || goals.length === 0) { container.innerHTML = '<div class="empty-state">Sin metas. Crea una meta de ahorro.</div>'; return; }
     container.innerHTML = goals.map(g => {
         const percent = (g.currentAmount / g.targetAmount) * 100;
         return `
@@ -719,7 +748,7 @@ function renderCalendar() {
     for (let i=0; i<startDay; i++) html += '<div class="calendar-day empty"></div>';
     for (let d=1; d<=daysInMonth; d++) {
         const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const dayTrans = transactions.filter(t => t.date.split('T')[0] === dateStr);
+        const dayTrans = Array.isArray(transactions) ? transactions.filter(t => t.date.split('T')[0] === dateStr) : [];
         let totalInc=0, totalExp=0;
         dayTrans.forEach(t => { if(t.type==='ingreso') totalInc += t.amount; else totalExp += t.amount; });
         const balance = totalInc - totalExp;
@@ -737,7 +766,7 @@ function renderCalendar() {
 }
 
 function showDailyTransactions(date) {
-    const dayTrans = transactions.filter(t => t.date.split('T')[0] === date);
+    const dayTrans = Array.isArray(transactions) ? transactions.filter(t => t.date.split('T')[0] === date) : [];
     const container = document.getElementById('dailyTransactions');
     if (!container) return;
     if (dayTrans.length === 0) {
@@ -762,7 +791,7 @@ function showDailyTransactions(date) {
 function renderExpenseReport() {
     const reportType = document.getElementById('expenseReportType')?.value || 'category';
     const month = document.getElementById('expenseReportMonth')?.value;
-    let filtered = [...transactions];
+    let filtered = Array.isArray(transactions) ? [...transactions] : [];
     if (month) filtered = filtered.filter(t => t.date.slice(0,7) === month);
     const gastos = filtered.filter(t => t.type === 'gasto');
     
@@ -793,7 +822,7 @@ function renderExpenseReport() {
             const catImg = cat ? (cat.imageUrl || '') : '';
             html += `<tr><td style="display:flex; align-items:center; gap:8px;">${catImg ? `<img src="${catImg}" style="width:24px;height:24px;border-radius:6px;">` : ''} ${escapeHtml(labels[i])}</td><td>${formatCurrency(data[i])}</td><td>${pct}%</td></tr>`;
         }
-        html += `<tr style="font-weight:bold; border-top:2px solid #ccc;"><td>Total</td><td>${formatCurrency(total)}</td><td>100%</td></tr></tbody>`;
+        html += `<tr style="font-weight:bold; border-top:2px solid #ccc;"><td>Total</td><td>${formatCurrency(total)}</td><td>100%</td></tr></tbody></table>`;
         document.getElementById('expenseReportDetails').innerHTML = html;
     } else {
         // por mes (acumulativo)
@@ -817,7 +846,7 @@ function renderExpenseReport() {
         for (let i=0; i<labels.length; i++) {
             html += `<tr><td>${labels[i]}</td><td>${formatCurrency(data[i])}</td></tr>`;
         }
-        html += `</tbody>`;
+        html += `</tbody></table>`;
         document.getElementById('expenseReportDetails').innerHTML = html;
     }
     
@@ -863,13 +892,13 @@ async function joinWithCode(code) {
         const ownerDoc = await getDoc(doc(db, 'users', ownerId));
         if (ownerDoc.exists()) {
             const data = ownerDoc.data();
-            transactions = data.transactions || [];
-            accounts = data.accounts || [];
-            categories = data.categories || [];
-            budgets = data.budgets || [];
-            goals = data.goals || [];
-            btcHoldings = data.btcHoldings || 0;
-            btcHistory = data.btcHistory || [];
+            transactions = Array.isArray(data.transactions) ? data.transactions : [];
+            accounts = Array.isArray(data.accounts) ? data.accounts : [];
+            categories = Array.isArray(data.categories) ? data.categories : [];
+            budgets = Array.isArray(data.budgets) ? data.budgets : [];
+            goals = Array.isArray(data.goals) ? data.goals : [];
+            btcHoldings = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
+            btcHistory = Array.isArray(data.btcHistory) ? data.btcHistory : [];
             recalculateAllBalances();
             saveToLocalStorage();
             await syncToCloud();
