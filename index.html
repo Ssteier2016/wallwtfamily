@@ -11,7 +11,7 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar -->
+        <!-- Sidebar (sin cambios) -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h2><i class="fas fa-wallet"></i> Mis Finanzas</h2>
@@ -36,7 +36,7 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
+        <!-- Main Content (igual que antes) -->
         <main class="main-content">
             <div class="top-bar">
                 <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
@@ -65,7 +65,7 @@
                 <div class="recent-transactions"><div class="section-header"><h3>Transacciones Recientes</h3><a href="#" class="view-all" data-view="transactions">Ver todas →</a></div><div class="transactions-list" id="recentTransactionsList"></div></div>
             </div>
 
-            <!-- Transacciones (con todas las columnas) -->
+            <!-- Transacciones -->
             <div id="transactionsView" class="view">
                 <div class="view-header">
                     <div class="filter-bar">
@@ -79,25 +79,17 @@
                 </div>
                 <div class="transactions-table-container">
                     <table class="transactions-table">
-                        <thead>
-                            <tr><th>Fecha</th><th>Imagen</th><th>Descripción</th><th>Categoría</th><th>Billetera</th><th>Monto</th><th>Acciones</th></tr>
-                        </thead>
+                        <thead><tr><th>Fecha</th><th>Imagen</th><th>Descripción</th><th>Categoría</th><th>Billetera</th><th>Monto</th><th>Acciones</th></tr></thead>
                         <tbody id="transactionsList"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Billeteras (con imagen URL) -->
-            <div id="accountsView" class="view">
-                <div class="view-header"><h2>Billeteras</h2><button class="btn-primary" id="addAccountBtn"><i class="fas fa-plus"></i> Nueva billetera</button></div>
-                <div class="accounts-grid" id="accountsList"></div>
-            </div>
+            <!-- Billeteras -->
+            <div id="accountsView" class="view"><div class="view-header"><h2>Billeteras</h2><button class="btn-primary" id="addAccountBtn"><i class="fas fa-plus"></i> Nueva billetera</button></div><div class="accounts-grid" id="accountsList"></div></div>
 
-            <!-- Categorías (con imagen URL) -->
-            <div id="categoriesView" class="view">
-                <div class="view-header"><h2>Categorías</h2><button class="btn-primary" id="addCategoryBtn"><i class="fas fa-plus"></i> Nueva categoría</button></div>
-                <div class="categories-grid" id="categoriesList"></div>
-            </div>
+            <!-- Categorías -->
+            <div id="categoriesView" class="view"><div class="view-header"><h2>Categorías</h2><button class="btn-primary" id="addCategoryBtn"><i class="fas fa-plus"></i> Nueva categoría</button></div><div class="categories-grid" id="categoriesList"></div></div>
 
             <!-- Presupuestos -->
             <div id="budgetsView" class="view">
@@ -106,11 +98,8 @@
                 <div id="budgetsList" class="budgets-grid"></div>
             </div>
 
-            <!-- Metas (con imagen URL) -->
-            <div id="goalsView" class="view">
-                <div class="view-header"><h2>Metas de Ahorro</h2><button class="btn-primary" id="addGoalBtn"><i class="fas fa-plus"></i> Nueva meta</button></div>
-                <div id="goalsList" class="goals-grid"></div>
-            </div>
+            <!-- Metas -->
+            <div id="goalsView" class="view"><div class="view-header"><h2>Metas de Ahorro</h2><button class="btn-primary" id="addGoalBtn"><i class="fas fa-plus"></i> Nueva meta</button></div><div id="goalsList" class="goals-grid"></div></div>
 
             <!-- Calendario -->
             <div id="calendarView" class="view">
@@ -119,7 +108,7 @@
                 <div id="dailyTransactions" style="margin-top:20px; background:white; border-radius:16px; padding:16px;"></div>
             </div>
 
-            <!-- Bitcoin (cartera y historial) -->
+            <!-- Bitcoin -->
             <div id="bitcoinView" class="view">
                 <div class="view-header"><h2>Bitcoin</h2></div>
                 <div class="summary-cards" style="grid-template-columns:repeat(2,1fr);">
@@ -170,12 +159,83 @@
         </main>
     </div>
 
-    <!-- Modales (contenedores vacíos que se llenan dinámicamente) -->
-    <div id="transactionModal" class="modal"></div>
-    <div id="accountModal" class="modal"></div>
-    <div id="categoryModal" class="modal"></div>
-    <div id="budgetModal" class="modal"></div>
-    <div id="goalModal" class="modal"></div>
+    <!-- ========== MODALES ESTÁTICOS COMPLETOS ========== -->
+    <!-- Modal Transacción -->
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3 id="modalTitle">Nueva transacción</h3><button class="modal-close">&times;</button></div>
+            <form id="transactionForm">
+                <input type="hidden" id="transactionId">
+                <div class="form-group"><label>Tipo</label><div class="type-toggle"><button type="button" class="type-btn active" data-type="gasto">Gasto</button><button type="button" class="type-btn" data-type="ingreso">Ingreso</button></div></div>
+                <div class="form-group"><label>Monto</label><input type="number" id="amount" step="0.01" required placeholder="0.00"></div>
+                <div class="form-group"><label>Fecha</label><input type="date" id="date" required></div>
+                <div class="form-group"><label>Categoría</label><select id="categoryId" required></select></div>
+                <div class="form-group"><label>Billetera</label><select id="accId" required></select></div>
+                <div class="form-group"><label>Nota / Comentario</label><textarea id="note" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group discount-group"><label><input type="checkbox" id="hasDiscount"> Aplicar descuento</label><div id="discountFields" style="display:none;"><div class="discount-type"><label><input type="radio" name="discountType" value="percent" checked> Porcentaje (%)</label><label><input type="radio" name="discountType" value="fixed"> Monto fijo</label></div><input type="number" id="discountValue" step="0.01" placeholder="Valor del descuento"></div></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Billetera -->
+    <div id="accountModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3 id="accountModalTitle">Nueva billetera</h3><button class="modal-close">&times;</button></div>
+            <form id="accountForm">
+                <input type="hidden" id="accountId">
+                <div class="form-group"><label>Nombre</label><input type="text" id="accName" required placeholder="Ej: Principal, Ahorros"></div>
+                <div class="form-group"><label>Ícono (clase Font Awesome)</label><input type="text" id="accIcon" value="fa-wallet" placeholder="fa-wallet, fa-bank, etc."></div>
+                <div class="form-group"><label>Color</label><select id="accColor"><option value="bg-emerald-100 text-emerald-600">Verde</option><option value="bg-blue-100 text-blue-600">Azul</option><option value="bg-purple-100 text-purple-600">Morado</option><option value="bg-amber-100 text-amber-600">Ámbar</option><option value="bg-rose-100 text-rose-600">Rosa</option></select></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="accImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Categoría -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3 id="categoryModalTitle">Nueva categoría</h3><button class="modal-close">&times;</button></div>
+            <form id="categoryForm">
+                <input type="hidden" id="categoryId">
+                <div class="form-group"><label>Nombre</label><input type="text" id="catName" required></div>
+                <div class="form-group"><label>Color</label><input type="color" id="catColor" value="#10b981"></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="catImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Presupuesto -->
+    <div id="budgetModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Presupuesto</h3><button class="modal-close">&times;</button></div>
+            <form id="budgetForm">
+                <input type="hidden" id="budgetId">
+                <div class="form-group"><label>Categoría</label><select id="budgetCategoryId" required></select></div>
+                <div class="form-group"><label>Monto presupuestado (ARS)</label><input type="number" id="budgetAmount" step="0.01" required></div>
+                <div class="form-group"><label>Mes</label><input type="month" id="budgetMonth" required></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Meta -->
+    <div id="goalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Meta de ahorro</h3><button class="modal-close">&times;</button></div>
+            <form id="goalForm">
+                <input type="hidden" id="goalId">
+                <div class="form-group"><label>Nombre de la meta</label><input type="text" id="goalName" required></div>
+                <div class="form-group"><label>Monto objetivo (ARS)</label><input type="number" id="goalTarget" step="0.01" required></div>
+                <div class="form-group"><label>Color</label><input type="color" id="goalColor" value="#3b82f6"></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="goalImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
     <div id="toast" class="toast"></div>
 
     <script type="module" src="script.js"></script>
