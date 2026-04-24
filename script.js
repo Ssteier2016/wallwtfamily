@@ -1,12 +1,12 @@
 // ============================================
-// IMPORTS DE FIREBASE
+// IMPORTS DE FIREBASE (MÓDULO ES6)
 // ============================================
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ============================================
-// CONFIGURACIÓN DE FIREBASE (TUS DATOS)
+// CONFIGURACIÓN DE FIREBASE (TUS DATOS REALES)
 // ============================================
 const firebaseConfig = {
     apiKey: "AIzaSyBxMzw8I7nc7e29X1xQoH2kgGHIiHzLUGo",
@@ -69,8 +69,8 @@ function initializeData() {
     const savedBtc = localStorage.getItem('finanzas_btc');
     
     transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
-    accounts = savedAccounts ? JSON.parse(savedAccounts) : [...defaultAccounts];
-    categories = savedCategories ? JSON.parse(savedCategories) : [...defaultCategories];
+    accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
+    categories = savedCategories ? JSON.parse(savedCategories) : JSON.parse(JSON.stringify(defaultCategories));
     budgets = savedBudgets ? JSON.parse(savedBudgets) : [];
     goals = savedGoals ? JSON.parse(savedGoals) : [];
     btcHoldings = savedBtc ? parseFloat(savedBtc) : 0;
@@ -109,7 +109,8 @@ async function syncToCloud() {
             transactions, accounts, categories, budgets, goals, btcHoldings,
             lastUpdated: new Date().toISOString()
         }, { merge: true });
-    } catch (e) { console.error(e); }
+        console.log("Datos sincronizados con Firebase");
+    } catch (e) { console.error("Error syncToCloud:", e); }
 }
 
 async function loadFromCloud() {
@@ -130,7 +131,7 @@ async function loadFromCloud() {
             refreshAllViews();
             showToast("Datos cargados desde la nube", "success");
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Error loadFromCloud:", e); }
 }
 
 // ========== IMPORT/EXPORT ==========
@@ -157,7 +158,8 @@ function importFromJSON(jsonData) {
 
 function exportToJSON() {
     const exportData = { transactions, accounts, categories, budgets, goals, btcHoldings, exportDate: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -169,10 +171,7 @@ function exportToJSON() {
     showToast('Backup exportado', 'success');
 }
 
-// ========== CRUD (transacciones, cuentas, categorías, presupuestos, metas) ==========
-// (Las funciones son las mismas que ya tenías pero sin referencias a window.firebaseModules)
-// Incluyo aquí las versiones definitivas:
-
+// ========== CRUD TRANSACCIONES (con imagen) ==========
 function addTransaction(transaction, imageBase64 = null) {
     const newTransaction = {
         id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
@@ -242,6 +241,7 @@ function deleteTransaction(id) {
     return true;
 }
 
+// ========== CRUD CUENTAS ==========
 function addAccount(account) {
     const newAccount = {
         id: 'acc-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
@@ -282,6 +282,7 @@ function deleteAccount(id) {
     return true;
 }
 
+// ========== CRUD CATEGORÍAS ==========
 function addCategory(category) {
     const newCategory = {
         id: 'cat-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
@@ -320,6 +321,7 @@ function deleteCategory(id) {
     return true;
 }
 
+// ========== CRUD PRESUPUESTOS ==========
 function addBudget(budget) {
     const newBudget = {
         id: 'bud-' + Date.now(),
@@ -334,6 +336,17 @@ function addBudget(budget) {
     showToast('Presupuesto guardado', 'success');
 }
 
+function updateBudget(id, updatedData) {
+    const index = budgets.findIndex(b => b.id === id);
+    if (index === -1) return null;
+    budgets[index] = { ...budgets[index], ...updatedData };
+    saveToLocalStorage();
+    syncToCloud();
+    refreshAllViews();
+    showToast('Presupuesto actualizado', 'success');
+    return budgets[index];
+}
+
 function deleteBudget(id) {
     budgets = budgets.filter(b => b.id !== id);
     saveToLocalStorage();
@@ -342,6 +355,7 @@ function deleteBudget(id) {
     showToast('Presupuesto eliminado', 'success');
 }
 
+// ========== CRUD METAS ==========
 function addGoal(goal) {
     const newGoal = {
         id: 'goal-' + Date.now(),
@@ -357,6 +371,17 @@ function addGoal(goal) {
     showToast('Meta creada', 'success');
 }
 
+function updateGoal(id, updatedData) {
+    const index = goals.findIndex(g => g.id === id);
+    if (index === -1) return null;
+    goals[index] = { ...goals[index], ...updatedData };
+    saveToLocalStorage();
+    syncToCloud();
+    refreshAllViews();
+    showToast('Meta actualizada', 'success');
+    return goals[index];
+}
+
 function deleteGoal(id) {
     goals = goals.filter(g => g.id !== id);
     saveToLocalStorage();
@@ -366,11 +391,20 @@ function deleteGoal(id) {
 }
 
 // ========== GETTERS ==========
-function getAccountName(id) { const a = accounts.find(a => a.id === id); return a ? a.name : 'Desconocido'; }
-function getCategoryName(id) { const c = categories.find(c => c.id === id); return c ? c.name : 'Sin categoría'; }
-function getCategoryColor(id) { const c = categories.find(c => c.id === id); return c ? c.color : '#94a3b8'; }
+function getAccountName(id) {
+    const a = accounts.find(a => a.id === id);
+    return a ? a.name : 'Desconocido';
+}
+function getCategoryName(id) {
+    const c = categories.find(c => c.id === id);
+    return c ? c.name : 'Sin categoría';
+}
+function getCategoryColor(id) {
+    const c = categories.find(c => c.id === id);
+    return c ? c.color : '#94a3b8';
+}
 
-// ========== RENDERIZADO (todas las funciones) ==========
+// ========== RENDERIZADO PRINCIPAL ==========
 let currentCharts = {};
 
 function refreshAllViews() {
@@ -459,15 +493,134 @@ function updateBalanceChart() {
     });
 }
 
-function renderTransactionsList() { /* igual, pero sin cambios */ }
-function renderAccountsList() { /* igual */ }
-function renderCategoriesList() { /* igual */ }
-function renderBudgetsList() { /* igual */ }
-function renderGoalsList() { /* igual */ }
+function renderTransactionsList() {
+    const tbody = document.getElementById('transactionsList');
+    if (!tbody) return;
+    let filtered = [...transactions];
+    const typeFilter = document.getElementById('filterType')?.value;
+    const accountFilter = document.getElementById('filterAccount')?.value;
+    const monthFilter = document.getElementById('filterMonth')?.value;
+    if (typeFilter && typeFilter !== 'all') filtered = filtered.filter(t => t.type === typeFilter);
+    if (accountFilter && accountFilter !== 'all') filtered = filtered.filter(t => t.accId === accountFilter);
+    if (monthFilter) filtered = filtered.filter(t => t.date.slice(0,7) === monthFilter);
+    filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No hay transacciones</td></tr>';
+        return;
+    }
+    tbody.innerHTML = filtered.map(t => `
+        <tr>
+            <td>${formatDate(t.date)}</td>
+            <td>${t.image ? `<img src="${t.image}" class="transaction-img" style="width:40px;height:40px;object-fit:cover;border-radius:8px;">` : '—'}</td>
+            <td>${escapeHtml(t.note) || (t.type==='ingreso'?'Ingreso':'Gasto')}</td>
+            <td><span style="background:${getCategoryColor(t.catId)}20; color:${getCategoryColor(t.catId)}; padding:4px 8px; border-radius:8px;">${getCategoryName(t.catId)}</span></td>
+            <td>${getAccountName(t.accId)}</td>
+            <td style="color:${t.type==='ingreso'?'#10b981':'#ef4444'}">${t.type==='ingreso'?'+':'-'} ${formatCurrency(t.amount)}</td>
+            <td><button class="btn-edit" onclick="editTransaction('${t.id}')"><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteTransactionHandler('${t.id}')"><i class="fas fa-trash-alt"></i></button></td>
+        </tr>
+    `).join('');
+}
 
-// Calendario, Bitcoin, Compartir, Login (con las importaciones directas)
+function renderAccountsList() {
+    const container = document.getElementById('accountsList');
+    if (!container) return;
+    if (accounts.length === 0) {
+        container.innerHTML = '<div class="empty-state">No hay billeteras. Crea una nueva.</div>';
+        return;
+    }
+    const iconMap = { banknote:'fa-money-bill-wave', 'credit-card':'fa-credit-card', 'piggy-bank':'fa-piggy-bank', wallet:'fa-wallet', building:'fa-building', coins:'fa-coins' };
+    container.innerHTML = accounts.map(acc => `
+        <div class="account-card">
+            <div class="account-info">
+                <div class="account-icon ${acc.color}"><i class="fas ${iconMap[acc.icon] || 'fa-wallet'}"></i></div>
+                <div class="account-details"><h4>${escapeHtml(acc.name)}</h4><span class="account-balance">${formatCurrency(acc.balance)}</span></div>
+            </div>
+            <div class="account-actions">
+                <button class="btn-edit" onclick="editAccount('${acc.id}')"><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteAccountHandler('${acc.id}')"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderCategoriesList() {
+    const container = document.getElementById('categoriesList');
+    if (!container) return;
+    if (categories.length === 0) {
+        container.innerHTML = '<div class="empty-state">No hay categorías. Crea una nueva.</div>';
+        return;
+    }
+    container.innerHTML = categories.map(cat => `
+        <div class="category-card">
+            <div class="category-info">
+                <div class="category-color" style="background: ${cat.color}; border-radius: 10px;"></div>
+                <span class="category-name">${escapeHtml(cat.name)}</span>
+            </div>
+            <div class="account-actions">
+                <button class="btn-edit" onclick="editCategory('${cat.id}')"><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteCategoryHandler('${cat.id}')"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderBudgetsList() {
+    const container = document.getElementById('budgetsList');
+    if (!container) return;
+    const currentMonth = new Date().toISOString().slice(0,7);
+    const monthly = budgets.filter(b => b.month === currentMonth);
+    if (monthly.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin presupuestos para este mes. Crea uno.</div>';
+        return;
+    }
+    container.innerHTML = monthly.map(b => {
+        const cat = categories.find(c => c.id === b.categoryId);
+        const catName = cat ? cat.name : 'Categoría';
+        const spent = transactions.filter(t => t.catId === b.categoryId && t.type === 'gasto' && t.date.slice(0,7) === currentMonth).reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const percent = (spent / b.amount) * 100;
+        const exceeded = spent > b.amount;
+        return `
+            <div class="budget-card">
+                <div class="budget-info">
+                    <strong>${escapeHtml(catName)}</strong>
+                    <div class="budget-amount">Presupuestado: ${formatCurrency(b.amount)} | Gastado: ${formatCurrency(spent)}</div>
+                    <div class="budget-progress"><div class="budget-progress-bar ${exceeded ? 'exceeded' : ''}" style="width: ${Math.min(percent,100)}%"></div></div>
+                    ${exceeded ? '<span style="color:#ef4444; font-size:0.75rem;">¡Superaste el presupuesto!</span>' : ''}
+                </div>
+                <div><button class="btn-delete" onclick="deleteBudget('${b.id}')"><i class="fas fa-trash"></i></button></div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderGoalsList() {
+    const container = document.getElementById('goalsList');
+    if (!container) return;
+    if (goals.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin metas. Crea una meta de ahorro.</div>';
+        return;
+    }
+    container.innerHTML = goals.map(g => {
+        const percent = (g.currentAmount / g.targetAmount) * 100;
+        return `
+            <div class="goal-card">
+                <div class="goal-info">
+                    <strong>${escapeHtml(g.name)}</strong>
+                    <div>${formatCurrency(g.currentAmount)} de ${formatCurrency(g.targetAmount)}</div>
+                    <div class="budget-progress"><div class="budget-progress-bar" style="width: ${Math.min(percent,100)}%; background:${g.color};"></div></div>
+                </div>
+                <div>
+                    <button class="btn-edit" onclick="editGoal('${g.id}')"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn-delete" onclick="deleteGoalHandler('${g.id}')"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ========== CALENDARIO ==========
 let currentCalendarDate = new Date();
-
 function renderCalendar() {
     const year = currentCalendarDate.getFullYear();
     const month = currentCalendarDate.getMonth();
@@ -519,6 +672,7 @@ function showDailyTransactions(date) {
     `;
 }
 
+// ========== BITCOIN ==========
 let currentBTCPriceUSD = 0, currentBTCPriceARS = 0;
 async function updateBTCPrice() {
     try {
@@ -537,6 +691,7 @@ async function updateBTCPrice() {
 function addBTC(amount) { btcHoldings += amount; saveToLocalStorage(); syncToCloud(); updateBTCPrice(); showToast("BTC agregado", "success"); }
 function removeBTC(amount) { if (btcHoldings >= amount) { btcHoldings -= amount; saveToLocalStorage(); syncToCloud(); updateBTCPrice(); showToast("BTC restado", "success"); } else showToast("No tienes suficientes BTC", "error"); }
 
+// ========== COMPARTIR WALLET ==========
 async function generateShareCode() {
     if (!firebaseEnabled || !currentUser) { showToast("Debes iniciar sesión para compartir", "error"); return; }
     const code = Math.random().toString(36).substring(2,10).toUpperCase();
@@ -570,6 +725,7 @@ async function joinWithCode(code) {
     } catch(e) { showToast("Error al unirse", "error"); }
 }
 
+// ========== LOGIN GOOGLE ==========
 async function loginWithGoogle() {
     if (!firebaseEnabled) { showToast("Firebase no configurado", "error"); return; }
     try {
@@ -597,20 +753,23 @@ async function logout() {
     showToast("Sesión cerrada", "success");
 }
 
-// ========== UTILIDADES Y MODALES ==========
+// ========== UTILIDADES ==========
 function formatCurrency(value) {
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(value);
 }
+
 function formatDate(dateString) {
     const d = new Date(dateString);
     return d.toLocaleDateString('es-AR');
 }
+
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
+
 function showToast(msg, type='success') {
     const toast = document.getElementById('toast');
     toast.textContent = msg;
@@ -618,31 +777,319 @@ function showToast(msg, type='success') {
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3000);
 }
-function updateFilters() { /* igual */ }
 
-function ensureModals() { /* crea modales si no existen */ }
+function updateFilters() {
+    const accSelect = document.getElementById('filterAccount');
+    if (accSelect) {
+        const val = accSelect.value;
+        accSelect.innerHTML = '<option value="all">Todas las billeteras</option>' + accounts.map(a => `<option value="${a.id}" ${val===a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('');
+    }
+    const catSelect = document.getElementById('categoryId');
+    if (catSelect) {
+        const val = catSelect.value;
+        catSelect.innerHTML = categories.map(c => `<option value="${c.id}" ${val===c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+    }
+    const accFormSelect = document.getElementById('accId');
+    if (accFormSelect) {
+        const val = accFormSelect.value;
+        accFormSelect.innerHTML = accounts.map(a => `<option value="${a.id}" ${val===a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('');
+    }
+    const budgetCatSelect = document.getElementById('budgetCategoryId');
+    if (budgetCatSelect) {
+        budgetCatSelect.innerHTML = categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    }
+}
+
+// ========== MANEJADORES DE MODALES ==========
+function ensureModals() {
+    const modalsToCreate = [
+        { id: 'transactionModal', title: 'Nueva transacción', formId: 'transactionForm' },
+        { id: 'accountModal', title: 'Nueva billetera', formId: 'accountForm' },
+        { id: 'categoryModal', title: 'Nueva categoría', formId: 'categoryForm' },
+        { id: 'budgetModal', title: 'Presupuesto', formId: 'budgetForm' },
+        { id: 'goalModal', title: 'Meta de ahorro', formId: 'goalForm' }
+    ];
+    for (const modal of modalsToCreate) {
+        if (!document.getElementById(modal.id)) {
+            const modalDiv = document.createElement('div');
+            modalDiv.id = modal.id;
+            modalDiv.className = 'modal';
+            modalDiv.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header"><h3 id="${modal.id}Title">${modal.title}</h3><button class="modal-close">&times;</button></div>
+                    <form id="${modal.formId}">
+                        <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+                    </form>
+                </div>
+            `;
+            document.body.appendChild(modalDiv);
+        }
+    }
+    // Agregar campo de imagen al formulario de transacción si no existe
+    const txForm = document.getElementById('transactionForm');
+    if (txForm && !document.getElementById('transactionImage')) {
+        const imgGroup = document.createElement('div');
+        imgGroup.className = 'form-group';
+        imgGroup.innerHTML = `<label>Imagen (opcional)</label><input type="file" id="transactionImage" accept="image/*">`;
+        txForm.insertBefore(imgGroup, txForm.querySelector('.form-actions'));
+    }
+    // Completar formulario de presupuesto
+    const budgetForm = document.getElementById('budgetForm');
+    if (budgetForm && !document.getElementById('budgetCategoryId')) {
+        budgetForm.innerHTML = `
+            <div class="form-group"><label>Categoría</label><select id="budgetCategoryId" required></select></div>
+            <div class="form-group"><label>Monto presupuestado (ARS)</label><input type="number" id="budgetAmount" step="0.01" required></div>
+            <div class="form-group"><label>Mes</label><input type="month" id="budgetMonth" required></div>
+            <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+        `;
+    }
+    // Completar formulario de meta
+    const goalForm = document.getElementById('goalForm');
+    if (goalForm && !document.getElementById('goalName')) {
+        goalForm.innerHTML = `
+            <div class="form-group"><label>Nombre de la meta</label><input type="text" id="goalName" required></div>
+            <div class="form-group"><label>Monto objetivo (ARS)</label><input type="number" id="goalTarget" step="0.01" required></div>
+            <div class="form-group"><label>Color</label><select id="goalColor"><option value="#3b82f6">Azul</option><option value="#10b981">Verde</option><option value="#f59e0b">Ámbar</option><option value="#ec4899">Rosa</option></select></div>
+            <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+        `;
+    }
+}
+
 let currentModal = null;
-function openModal(modalId) { /* ... */ }
-function closeModal() { /* ... */ }
-function openTransactionModal(id=null) { /* ... */ }
-function openAccountModal(id=null) { /* ... */ }
-function openCategoryModal(id=null) { /* ... */ }
-function openBudgetModal(id=null) { openModal('budgetModal'); }
-function openGoalModal(id=null) { openModal('goalModal'); }
+function openModal(modalId) {
+    const m = document.getElementById(modalId);
+    if (m) { m.classList.add('active'); currentModal = m; }
+}
+function closeModal() {
+    if (currentModal) { currentModal.classList.remove('active'); currentModal = null; }
+}
 
-// Handlers globales
-window.deleteTransactionHandler = (id) => { if (confirm('¿Eliminar?')) deleteTransaction(id); };
-window.deleteAccountHandler = (id) => { if (confirm('¿Eliminar billetera?')) deleteAccount(id); };
-window.deleteCategoryHandler = (id) => { if (confirm('¿Eliminar categoría?')) deleteCategory(id); };
-window.deleteBudget = (id) => { if (confirm('¿Eliminar presupuesto?')) deleteBudget(id); };
-window.deleteGoalHandler = (id) => { if (confirm('¿Eliminar meta?')) deleteGoal(id); };
+function openTransactionModal(id = null) {
+    const modal = document.getElementById('transactionModal');
+    if (!modal) return;
+    document.getElementById('modalTitle').innerText = id ? 'Editar transacción' : 'Nueva transacción';
+    document.getElementById('transactionId').value = id || '';
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('.type-btn').forEach(btn => btn.classList.remove('active'));
+    const gastoBtn = document.querySelector('.type-btn[data-type="gasto"]');
+    if (gastoBtn) gastoBtn.classList.add('active');
+    updateFilters();
+    if (id) {
+        const t = transactions.find(tx => tx.id === id);
+        if (t) {
+            document.getElementById('amount').value = t.amount;
+            document.getElementById('date').value = t.date.split('T')[0];
+            document.getElementById('categoryId').value = t.catId;
+            document.getElementById('accId').value = t.accId;
+            document.getElementById('note').value = t.note || '';
+            const typeBtn = document.querySelector(`.type-btn[data-type="${t.type}"]`);
+            if (typeBtn) typeBtn.classList.add('active');
+            if (t.discount) {
+                document.getElementById('hasDiscount').checked = true;
+                document.getElementById('discountFields').style.display = 'block';
+                if (t.discountPercent) {
+                    document.querySelector('input[name="discountType"][value="percent"]').checked = true;
+                    document.getElementById('discountValue').value = t.discountPercent;
+                } else {
+                    document.querySelector('input[name="discountType"][value="fixed"]').checked = true;
+                    document.getElementById('discountValue').value = t.discountFixed;
+                }
+            } else {
+                document.getElementById('hasDiscount').checked = false;
+                document.getElementById('discountFields').style.display = 'none';
+            }
+        }
+    } else {
+        document.getElementById('hasDiscount').checked = false;
+        document.getElementById('discountFields').style.display = 'none';
+    }
+    openModal('transactionModal');
+}
+
+function openAccountModal(id = null) {
+    const modal = document.getElementById('accountModal');
+    if (!modal) return;
+    document.getElementById('accountModalTitle').innerText = id ? 'Editar billetera' : 'Nueva billetera';
+    document.getElementById('accountId').value = id || '';
+    if (id) {
+        const acc = accounts.find(a => a.id === id);
+        if (acc) {
+            document.getElementById('accName').value = acc.name;
+            document.getElementById('accIcon').value = acc.icon;
+            document.getElementById('accColor').value = acc.color;
+        }
+    } else {
+        document.getElementById('accName').value = '';
+        document.getElementById('accIcon').value = 'banknote';
+        document.getElementById('accColor').value = 'bg-emerald-100 text-emerald-600';
+    }
+    openModal('accountModal');
+}
+
+function openCategoryModal(id = null) {
+    const modal = document.getElementById('categoryModal');
+    if (!modal) return;
+    document.getElementById('categoryModalTitle').innerText = id ? 'Editar categoría' : 'Nueva categoría';
+    document.getElementById('categoryId').value = id || '';
+    if (id) {
+        const cat = categories.find(c => c.id === id);
+        if (cat) {
+            document.getElementById('catName').value = cat.name;
+            document.getElementById('catColor').value = cat.color;
+        }
+    } else {
+        document.getElementById('catName').value = '';
+        document.getElementById('catColor').value = '#10b981';
+    }
+    openModal('categoryModal');
+}
+
+function openBudgetModal(id = null) {
+    openModal('budgetModal');
+}
+function openGoalModal(id = null) {
+    openModal('goalModal');
+}
+
+// Handlers globales para los botones onclick
+window.deleteTransactionHandler = (id) => { if (confirm('¿Eliminar esta transacción?')) deleteTransaction(id); };
+window.deleteAccountHandler = (id) => { if (confirm('¿Eliminar esta billetera?')) deleteAccount(id); };
+window.deleteCategoryHandler = (id) => { if (confirm('¿Eliminar esta categoría?')) deleteCategory(id); };
+window.deleteBudget = (id) => { if (confirm('¿Eliminar este presupuesto?')) deleteBudget(id); };
+window.deleteGoalHandler = (id) => { if (confirm('¿Eliminar esta meta?')) deleteGoal(id); };
 window.editTransaction = openTransactionModal;
 window.editAccount = openAccountModal;
 window.editCategory = openCategoryModal;
-window.editGoal = (id) => { alert('Editar meta próximamente'); };
+window.editGoal = (id) => {
+    const goal = goals.find(g => g.id === id);
+    if (!goal) return;
+    const newAmount = prompt(`Editar progreso de "${goal.name}"\nMonto actual: ${formatCurrency(goal.currentAmount)}\nMonto objetivo: ${formatCurrency(goal.targetAmount)}\nIngrese el nuevo monto ahorrado:`, goal.currentAmount);
+    if (newAmount !== null) {
+        const parsed = parseFloat(newAmount);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= goal.targetAmount) {
+            updateGoal(id, { currentAmount: parsed });
+        } else {
+            showToast('Monto inválido', 'error');
+        }
+    }
+};
 
-function switchView(viewId) { /* igual */ }
-function generateReport() { /* implementación básica */ }
+// ========== NAVEGACIÓN Y REPORTES ==========
+function switchView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const targetView = document.getElementById(`${viewId}View`);
+    if (targetView) targetView.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.view === viewId) item.classList.add('active');
+    });
+    const titles = {
+        dashboard: 'Dashboard',
+        transactions: 'Transacciones',
+        accounts: 'Billeteras',
+        categories: 'Categorías',
+        budgets: 'Presupuestos',
+        goals: 'Metas',
+        calendar: 'Calendario',
+        bitcoin: 'Bitcoin',
+        reports: 'Reportes'
+    };
+    document.getElementById('currentViewTitle').innerText = titles[viewId] || 'Dashboard';
+    if (viewId === 'reports') generateReport();
+}
+
+function generateReport() {
+    const reportType = document.getElementById('reportType')?.value || 'category';
+    const month = document.getElementById('reportMonth')?.value;
+    let filtered = [...transactions];
+    if (month) filtered = filtered.filter(t => t.date.slice(0,7) === month);
+    let labels = [], data = [], title = '';
+    if (reportType === 'category') {
+        const byCat = {};
+        filtered.forEach(t => {
+            if (t.type === 'gasto') {
+                const catName = getCategoryName(t.catId);
+                byCat[catName] = (byCat[catName] || 0) + parseFloat(t.amount);
+            }
+        });
+        labels = Object.keys(byCat);
+        data = Object.values(byCat);
+        title = 'Gastos por Categoría';
+    } else if (reportType === 'account') {
+        const byAcc = {};
+        filtered.forEach(t => {
+            const accName = getAccountName(t.accId);
+            byAcc[accName] = (byAcc[accName] || 0) + (t.type === 'ingreso' ? parseFloat(t.amount) : -parseFloat(t.amount));
+        });
+        labels = Object.keys(byAcc);
+        data = Object.values(byAcc);
+        title = 'Balance por Billetera';
+    } else {
+        const monthlyData = {};
+        filtered.forEach(t => {
+            const monthKey = new Date(t.date).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' });
+            if (!monthlyData[monthKey]) monthlyData[monthKey] = { income: 0, expense: 0 };
+            if (t.type === 'ingreso') monthlyData[monthKey].income += parseFloat(t.amount);
+            else monthlyData[monthKey].expense += parseFloat(t.amount);
+        });
+        labels = Object.keys(monthlyData);
+        const incomes = labels.map(l => monthlyData[l].income);
+        const expenses = labels.map(l => monthlyData[l].expense);
+        const ctx = document.getElementById('reportChart')?.getContext('2d');
+        if (ctx) {
+            if (window.reportChartInstance) window.reportChartInstance.destroy();
+            window.reportChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Ingresos', data: incomes, backgroundColor: '#10b981', borderRadius: 8 },
+                        { label: 'Gastos', data: expenses, backgroundColor: '#ef4444', borderRadius: 8 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top' }, title: { display: true, text: 'Ingresos vs Gastos Mensuales' } },
+                    scales: { y: { ticks: { callback: (val) => formatCurrency(val) } } }
+                }
+            });
+        }
+        const detailsContainer = document.getElementById('reportDetails');
+        if (detailsContainer) {
+            let html = '<table><thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Balance</th></tr></thead><tbody>';
+            for (const key of labels) {
+                const inc = monthlyData[key].income;
+                const exp = monthlyData[key].expense;
+                const bal = inc - exp;
+                html += `<tr><td>${key}</td><td style="color:#10b981;">${formatCurrency(inc)}</td><td style="color:#ef4444;">${formatCurrency(exp)}</td><td style="color:${bal>=0?'#10b981':'#ef4444'}">${formatCurrency(bal)}</td></tr>`;
+            }
+            html += '</tbody></table>';
+            detailsContainer.innerHTML = html;
+        }
+        return;
+    }
+    const ctx = document.getElementById('reportChart')?.getContext('2d');
+    if (ctx) {
+        if (window.reportChartInstance) window.reportChartInstance.destroy();
+        const colors = labels.map((_, i) => `hsl(${(i * 360 / labels.length) % 360}, 70%, 60%)`);
+        window.reportChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' }, title: { display: true, text: title } } }
+        });
+    }
+    const detailsContainer = document.getElementById('reportDetails');
+    if (detailsContainer) {
+        const total = data.reduce((a, b) => a + b, 0);
+        let html = '<table><thead><tr><th>Concepto</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
+        for (let i = 0; i < labels.length; i++) {
+            const pct = total > 0 ? ((data[i] / total) * 100).toFixed(1) : 0;
+            html += `<tr><td>${escapeHtml(labels[i])}</td><td>${formatCurrency(data[i])}</td><td>${pct}%</td></tr>`;
+        }
+        html += `<tr style="font-weight:bold; border-top:2px solid #ccc;"><td>Total</td><td>${formatCurrency(total)}</td><td>100%</td></tr></tbody></table>`;
+        detailsContainer.innerHTML = html;
+    }
+}
 
 // ========== EVENT LISTENERS ==========
 document.addEventListener('DOMContentLoaded', () => {
@@ -659,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (e) => { e.preventDefault(); switchView(link.dataset.view); });
     });
     
-    // Botones
+    // Botones de acción
     document.getElementById('addTransactionBtn')?.addEventListener('click', () => openTransactionModal());
     document.getElementById('addTransactionBtn2')?.addEventListener('click', () => openTransactionModal());
     document.getElementById('addAccountBtn')?.addEventListener('click', () => openAccountModal());
@@ -700,13 +1147,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('prevMonth')?.addEventListener('click', () => { currentCalendarDate.setMonth(currentCalendarDate.getMonth()-1); renderCalendar(); });
     document.getElementById('nextMonth')?.addEventListener('click', () => { currentCalendarDate.setMonth(currentCalendarDate.getMonth()+1); renderCalendar(); });
     
-    // Formularios
+    // Formulario de transacción
     const txForm = document.getElementById('transactionForm');
     if (txForm) {
         txForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('transactionId').value;
-            const type = document.querySelector('.type-btn.active').dataset.type;
+            const type = document.querySelector('.type-btn.active')?.dataset.type;
+            if (!type) return;
             let amount = parseFloat(document.getElementById('amount').value);
             const date = document.getElementById('date').value;
             const catId = document.getElementById('categoryId').value;
@@ -715,10 +1163,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const hasDiscount = document.getElementById('hasDiscount')?.checked;
             let discountPercent=0, discountFixed=0, originalAmount=amount;
             if (hasDiscount) {
-                const discountType = document.querySelector('input[name="discountType"]:checked').value;
+                const discountType = document.querySelector('input[name="discountType"]:checked')?.value;
                 const discountVal = parseFloat(document.getElementById('discountValue').value);
                 if (discountType === 'percent') { discountPercent = discountVal; amount = originalAmount * (1 - discountVal/100); }
-                else { discountFixed = discountVal; amount = originalAmount - discountVal; }
+                else if (discountType === 'fixed') { discountFixed = discountVal; amount = originalAmount - discountVal; }
             }
             let imageBase64 = null;
             const imgFile = document.getElementById('transactionImage')?.files[0];
@@ -735,6 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             closeModal();
         });
     }
+    // Formulario cuenta
     document.getElementById('accountForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
         const id = document.getElementById('accountId').value;
@@ -745,6 +1194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else addAccount({ name, icon, color });
         closeModal();
     });
+    // Formulario categoría
     document.getElementById('categoryForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
         const id = document.getElementById('categoryId').value;
@@ -754,19 +1204,21 @@ document.addEventListener('DOMContentLoaded', () => {
         else addCategory({ name, color });
         closeModal();
     });
+    // Formulario presupuesto
     document.getElementById('budgetForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        const categoryId = document.getElementById('budgetCategoryId').value;
-        const amount = document.getElementById('budgetAmount').value;
-        const month = document.getElementById('budgetMonth').value;
+        const categoryId = document.getElementById('budgetCategoryId')?.value;
+        const amount = document.getElementById('budgetAmount')?.value;
+        const month = document.getElementById('budgetMonth')?.value;
         if (categoryId && amount && month) addBudget({ categoryId, amount, month });
         closeModal();
     });
+    // Formulario meta
     document.getElementById('goalForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        const name = document.getElementById('goalName').value;
-        const targetAmount = document.getElementById('goalTarget').value;
-        const color = document.getElementById('goalColor').value;
+        const name = document.getElementById('goalName')?.value;
+        const targetAmount = document.getElementById('goalTarget')?.value;
+        const color = document.getElementById('goalColor')?.value;
         if (name && targetAmount) addGoal({ name, targetAmount, color });
         closeModal();
     });
@@ -776,4 +1228,20 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });
     document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
     document.getElementById('closeSidebar')?.addEventListener('click', () => document.getElementById('sidebar').classList.remove('open'));
+    
+    // Tipo toggle (para los botones dentro del modal de transacción)
+    document.querySelectorAll('.type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+    // Descuento checkbox
+    const hasDiscountCheck = document.getElementById('hasDiscount');
+    if (hasDiscountCheck) {
+        hasDiscountCheck.addEventListener('change', (e) => {
+            const discountFields = document.getElementById('discountFields');
+            if (discountFields) discountFields.style.display = e.target.checked ? 'block' : 'none';
+        });
+    }
 });
