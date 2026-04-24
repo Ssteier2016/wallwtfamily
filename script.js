@@ -16,7 +16,7 @@ const firebaseConfig = {
 let app, auth, db, googleProvider;
 let firebaseEnabled = false;
 try {
-    if (firebaseConfig.apiKey !== "TU_API_KEY" && window.firebaseModules) {
+    if (firebaseConfig.apiKey && window.firebaseModules) {
         const { initializeApp, getAuth, GoogleAuthProvider, getFirestore } = window.firebaseModules;
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
