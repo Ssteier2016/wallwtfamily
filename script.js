@@ -846,14 +846,26 @@ function renderBudgetsList() {
 }
 
 function renderBudgetPieChart() {
-    const ctx = document.getElementById('budgetPieChart')?.getContext('2d');
+    const canvas = document.getElementById('budgetPieChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    
     const selectedMonth = document.getElementById('budgetMonthSelect')?.value || new Date().toISOString().slice(0,7);
     const monthly = budgets.filter(b => b.month === selectedMonth);
+    
+    // Destruir gráfico anterior solo si existe y es un Chart válido
+    if (window.budgetPieChart && typeof window.budgetPieChart.destroy === 'function') {
+        window.budgetPieChart.destroy();
+        window.budgetPieChart = null;
+    }
+    
     if (monthly.length === 0) {
-        if (window.budgetPieChart) window.budgetPieChart.destroy();
+        // Limpiar canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         return;
     }
+    
     const labels = [];
     const data = [];
     monthly.forEach(b => {
@@ -862,7 +874,7 @@ function renderBudgetPieChart() {
         data.push(b.amount);
     });
     const colors = labels.map((_, i) => `hsl(${(i * 360 / Math.max(labels.length,1)) % 360}, 70%, 60%)`);
-    if (window.budgetPieChart) window.budgetPieChart.destroy();
+    
     window.budgetPieChart = new Chart(ctx, {
         type: 'doughnut',
         data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
