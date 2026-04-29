@@ -833,8 +833,9 @@ function renderBudgetsList() {
                     <div class="budget-progress"><div class="budget-progress-bar ${exceeded ? 'exceeded' : ''}" style="width: ${Math.min(percent,100)}%"></div></div>
                     ${exceeded ? '<span style="color:#ef4444; font-size:0.75rem;">¡Superaste el presupuesto!</span>' : ''}
                 </div>
-                <div><button class="btn-delete" onclick="deleteBudget('${b.id}')"><i class="fas fa-trash"></i></button></div>
-            </div>
+    <button class="btn-edit" onclick="editBudget('${b.id}')"><i class="fas fa-pencil-alt"></i></button>
+    <button class="btn-delete" onclick="deleteBudget('${b.id}')"><i class="fas fa-trash"></i></button>
+</div>
         `;
     }).join('');
     
