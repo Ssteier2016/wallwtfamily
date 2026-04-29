@@ -1326,6 +1326,16 @@ window.editCategory = (id) => {
     openModal('categoryModal');
 };
 
+window.editBudget = (id) => {
+    const budget = budgets.find(b => b.id === id);
+    if (!budget) return;
+    document.getElementById('budgetId').value = budget.id;
+    document.getElementById('budgetCategoryId').value = budget.categoryId;
+    document.getElementById('budgetAmount').value = budget.amount;
+    document.getElementById('budgetMonth').value = budget.month;
+    openModal('budgetModal');
+};
+
 window.editGoal = (id) => {
     const goal = goals.find(g => g.id === id);
     if (!goal) return;
