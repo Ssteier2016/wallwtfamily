@@ -1776,25 +1776,28 @@ document.addEventListener('DOMContentLoaded', () => {
         updateBtcMovement(id, { amount, type, note, imageUrl });
         closeModal();
     });
-    document.getElementById('cedearForm')?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const ticker = document.getElementById('cedearSelect').value;
-        const amount = parseFloat(document.getElementById('cedearAmount').value);
-        const priceUSD = parseFloat(document.getElementById('cedearPrice').value);
+    document.getElementById('cedearForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const ticker = document.getElementById('cedearSelect').value;
+    const amount = parseFloat(document.getElementById('cedearAmount').value);
+    const manualPrice = parseFloat(document.getElementById('cedearPrice').value);
+    const cedearType = document.getElementById('cedearType').value;
 
-        if (!ticker) { showToast("Selecciona un CEDEAR", "error"); return; }
-        if (isNaN(amount)) { showToast("Cantidad inválida", "error"); return; }
+    if (!ticker) { showToast("Selecciona un CEDEAR", "error"); return; }
+    if (isNaN(amount) || amount < 0) { showToast("Cantidad inválida", "error"); return; }
 
-        addOrUpdateCedear(ticker, amount);
+    showToast(`Obteniendo precio de ${ticker}...`, 'success');
 
-        if (!isNaN(priceUSD) && priceUSD > 0) {
-            cedearPrices[ticker] = priceUSD;
-            saveToLocalStorage();
-            syncToCloud();
-        }
+    // Si tiene precio manual lo usamos, si no buscamos en Alpha Vantage
+    if (!isNaN(manualPrice) && manualPrice > 0) {
+        cedearPrices[ticker] = manualPrice;
+    } else {
+        await fetchCedearPrice(ticker);
+    }
 
-        closeModal();
-    });
+    addOrUpdateCedear(ticker, amount);
+    closeModal();
+});
 
     document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', closeModal));
     window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });
