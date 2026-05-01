@@ -148,7 +148,7 @@
 
             <!-- Capital: saldos en BTC y ARS por billetera -->
             <div id="capitalView" class="view">
-                <div class="view-header"><h2>Capital</h2></div>
+                <div class="view-header"><h2>Capital</h2><button class="btn-primary" id="addCedearBtn"><i class="fas fa-plus"></i> Agregar CEDEAR</button></div>
                 <div class="summary-cards" style="grid-template-columns: repeat(2,1fr);">
                     <div class="card"><div class="card-icon" style="background:#f7931a20; color:#f7931a;"><i class="fab fa-bitcoin"></i></div><div class="card-content"><span class="card-label">Capital en BTC</span><span class="card-value" id="capitalBTC">0.0000 BTC</span></div></div>
                     <div class="card"><div class="card-icon" style="background:#f7931a20; color:#f7931a;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Valor BTC en USD</span><span class="card-value" id="capitalBTCUSD">$0.00</span></div></div>
@@ -160,7 +160,20 @@
                         <div id="accountsCapitalList" style="margin-top:10px;"></div>
                         <hr style="margin:10px 0;">
                         <div><strong>Total ARS en billeteras:</strong> <span id="totalARSBalance">$0.00</span></div>
-                        <div><strong>Patrimonio total (ARS + BTC en ARS):</strong> <span id="totalWealth">$0.00</span></div>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-content">
+                        <span class="card-label">CEDEARs Argentinos</span>
+                        <div id="cedearsList" style="margin-top:10px; display: grid; gap: 10px;"></div>
+                        <hr style="margin:10px 0;">
+                        <div><strong>Total CEDEARs (USD):</strong> <span id="totalCedearUSD">$0.00</span></div>
+                        <div><strong>Total CEDEARs (ARS):</strong> <span id="totalCedearARS">$0.00</span></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-content">
+                        <strong>Patrimonio total (ARS + BTC + CEDEARs):</strong> <span id="totalWealth">$0.00</span>
                     </div>
                 </div>
             </div>
@@ -291,6 +304,20 @@
                 <div class="form-group"><label>Tipo</label><select id="editBtcType"><option value="compra">Compra</option><option value="venta">Venta</option></select></div>
                 <div class="form-group"><label>Comentario</label><textarea id="editBtcNote" rows="2" placeholder="Opcional"></textarea></div>
                 <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="editBtcImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para editar CEDEARs -->
+    <div id="cedearModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar CEDEAR</h3><button class="modal-close">&times;</button></div>
+            <form id="cedearForm">
+                <input type="hidden" id="cedearTicker">
+                <div class="form-group"><label>CEDEAR</label><select id="cedearSelect" required></select></div>
+                <div class="form-group"><label>Cantidad</label><input type="number" id="cedearAmount" step="0.01" required placeholder="0.00"></div>
+                <div class="form-group"><label>Precio unitario (USD)</label><input type="number" id="cedearPrice" step="0.01" placeholder="Opcional: editar manualmente"></div>
                 <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
             </form>
         </div>

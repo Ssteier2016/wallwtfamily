@@ -42,6 +42,11 @@ let budgets = [];
 let goals = [];
 let btcHoldings = 0;
 let btcHistory = [];
+let cedearHoldings = {};
+let cedearPrices = {};
+let cedearUSDExchange = 1;
+
+const defaultCedears = ['TSLA', 'MSFT', 'AAPL', 'AMZN', 'NVDA', 'YPF', 'ALUAR', 'CAT', 'BA', 'KO', 'MELI', 'META', 'GOOGL', 'SHOP', 'NKE'];
 
 // Categorías por defecto con imagen
 const defaultCategories = [
@@ -72,7 +77,9 @@ function initializeData() {
         const savedGoals = localStorage.getItem('finanzas_goals');
         const savedBtc = localStorage.getItem('finanzas_btc');
         const savedBtcHistory = localStorage.getItem('finanzas_btc_history');
-        
+        const savedCedears = localStorage.getItem('finanzas_cedear_holdings');
+        const savedCedearPrices = localStorage.getItem('finanzas_cedear_prices');
+
         transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
         accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
         categories = savedCategories ? JSON.parse(savedCategories) : JSON.parse(JSON.stringify(defaultCategories));
@@ -80,14 +87,18 @@ function initializeData() {
         goals = savedGoals ? JSON.parse(savedGoals) : [];
         btcHoldings = savedBtc ? parseFloat(savedBtc) : 0;
         btcHistory = savedBtcHistory ? JSON.parse(savedBtcHistory) : [];
-        
+        cedearHoldings = savedCedears ? JSON.parse(savedCedears) : {};
+        cedearPrices = savedCedearPrices ? JSON.parse(savedCedearPrices) : {};
+
         if (!Array.isArray(transactions)) transactions = [];
         if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
         if (!Array.isArray(categories)) categories = JSON.parse(JSON.stringify(defaultCategories));
         if (!Array.isArray(budgets)) budgets = [];
         if (!Array.isArray(goals)) goals = [];
         if (!Array.isArray(btcHistory)) btcHistory = [];
-        
+        if (typeof cedearHoldings !== 'object') cedearHoldings = {};
+        if (typeof cedearPrices !== 'object') cedearPrices = {};
+
         recalculateAllBalances();
         saveToLocalStorage();
     } catch(e) {
@@ -99,6 +110,8 @@ function initializeData() {
         goals = [];
         btcHoldings = 0;
         btcHistory = [];
+        cedearHoldings = {};
+        cedearPrices = {};
         recalculateAllBalances();
         saveToLocalStorage();
     }
@@ -112,6 +125,8 @@ function saveToLocalStorage() {
     localStorage.setItem('finanzas_goals', JSON.stringify(goals));
     localStorage.setItem('finanzas_btc', btcHoldings.toString());
     localStorage.setItem('finanzas_btc_history', JSON.stringify(btcHistory));
+    localStorage.setItem('finanzas_cedear_holdings', JSON.stringify(cedearHoldings));
+    localStorage.setItem('finanzas_cedear_prices', JSON.stringify(cedearPrices));
 }
 
 function recalculateAllBalances() {
@@ -134,7 +149,7 @@ async function syncToCloud() {
     try {
         const userDocRef = doc(db, 'users', currentUser.uid);
         await setDoc(userDocRef, {
-            transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
+            transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory, cedearHoldings, cedearPrices,
             lastUpdated: new Date().toISOString()
         }, { merge: true });
     } catch (e) { console.error(e); }
@@ -154,6 +169,8 @@ async function loadFromCloud() {
             goals = Array.isArray(data.goals) ? data.goals : [];
             btcHoldings = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
             btcHistory = Array.isArray(data.btcHistory) ? data.btcHistory : [];
+            cedearHoldings = typeof data.cedearHoldings === 'object' ? data.cedearHoldings : {};
+            cedearPrices = typeof data.cedearPrices === 'object' ? data.cedearPrices : {};
             recalculateAllBalances();
             saveToLocalStorage();
             refreshAllViews();
@@ -173,6 +190,8 @@ function importFromJSON(jsonData) {
         if (data.goals && Array.isArray(data.goals)) goals = data.goals;
         if (typeof data.btcHoldings === 'number') btcHoldings = data.btcHoldings;
         if (data.btcHistory && Array.isArray(data.btcHistory)) btcHistory = data.btcHistory;
+        if (data.cedearHoldings && typeof data.cedearHoldings === 'object') cedearHoldings = data.cedearHoldings;
+        if (data.cedearPrices && typeof data.cedearPrices === 'object') cedearPrices = data.cedearPrices;
         recalculateAllBalances();
         saveToLocalStorage();
         syncToCloud();
@@ -186,7 +205,7 @@ function importFromJSON(jsonData) {
 }
 
 function exportToJSON() {
-    const exportData = { transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory, exportDate: new Date().toISOString() };
+    const exportData = { transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory, cedearHoldings, cedearPrices, exportDate: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -427,6 +446,7 @@ async function updateBTCPrice() {
         const data = await res.json();
         currentBTCPriceUSD = data.bitcoin.usd;
         currentBTCPriceARS = data.bitcoin.ars;
+        cedearUSDExchange = data.bitcoin.ars / data.bitcoin.usd;
         const btcPriceUSDElem = document.getElementById('btcPriceUSD');
         const btcPriceARSElem = document.getElementById('btcPriceARS');
         const totalBTCelem = document.getElementById('totalBTC');
@@ -438,6 +458,16 @@ async function updateBTCPrice() {
         if (btcValueUSDelem) btcValueUSDelem.innerHTML = formatCurrencyUSD(btcHoldings * currentBTCPriceUSD);
         if (btcValueARSelem) btcValueARSelem.innerHTML = formatCurrency(btcHoldings * currentBTCPriceARS);
     } catch(e) { console.error(e); }
+}
+
+async function updateCedearPrices() {
+    try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,ars');
+        const data = await res.json();
+        cedearUSDExchange = data.bitcoin.ars / data.bitcoin.usd;
+    } catch (e) {
+        console.error("Error obteniendo tasa USD/ARS:", e);
+    }
 }
 
 function formatCurrencyUSD(value) {
@@ -525,6 +555,20 @@ function deleteBtcMovement(id) {
     showToast('Movimiento BTC eliminado', 'success');
 }
 
+// ========== CRUD CEDEARS ==========
+function addOrUpdateCedear(ticker, amount) {
+    if (amount < 0) { showToast("Cantidad inválida", "error"); return; }
+    if (amount === 0) {
+        delete cedearHoldings[ticker];
+    } else {
+        cedearHoldings[ticker] = parseFloat(amount);
+    }
+    saveToLocalStorage();
+    syncToCloud();
+    renderCapitalView();
+    showToast(`${ticker} actualizado`, "success");
+}
+
 function renderBTCHistory() {
     const container = document.getElementById('btcHistoryList');
     if (!container) return;
@@ -596,6 +640,7 @@ function refreshAllViews() {
     renderGoalsList();
     renderCalendar();
     updateBTCPrice();
+    updateCedearPrices();
     renderBTCHistory();
     renderCapitalView();
     updateFilters();
@@ -612,13 +657,46 @@ function renderCapitalView() {
     document.getElementById('capitalBTC').innerHTML = `${capitalBTC.toFixed(8)} BTC`;
     document.getElementById('capitalBTCUSD').innerHTML = formatCurrencyUSD(capitalBTCUSD);
     document.getElementById('capitalBTCARS').innerHTML = formatCurrency(capitalBTCARS);
-    
+
     let totalARS = 0;
     const accountsHtml = accounts.map(acc => `<div><strong>${escapeHtml(acc.name)}</strong>: ${formatCurrency(acc.balance)}</div>`).join('');
     document.getElementById('accountsCapitalList').innerHTML = accountsHtml;
     totalARS = accounts.reduce((sum, acc) => sum + acc.balance, 0);
     document.getElementById('totalARSBalance').innerHTML = formatCurrency(totalARS);
-    const totalWealth = totalARS + capitalBTCARS;
+
+    let totalCedearUSD = 0;
+    let totalCedearARS = 0;
+    const cedearCards = defaultCedears.map(ticker => {
+        const amount = cedearHoldings[ticker] || 0;
+        const priceUSD = cedearPrices[ticker] || 0;
+        const valueUSD = amount * priceUSD;
+        const valueARS = valueUSD * cedearUSDExchange;
+        totalCedearUSD += valueUSD;
+        totalCedearARS += valueARS;
+
+        if (amount === 0) return '';
+        return `
+            <div class="cedear-card" style="padding:10px; background:#f1f5f9; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                <div style="flex:1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span><strong>${ticker}</strong></span>
+                        <span>${amount.toFixed(2)} unidades</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #64748b; margin-top:4px;">
+                        <span>${formatCurrencyUSD(valueUSD)}</span>
+                        <span>${formatCurrency(valueARS)}</span>
+                    </div>
+                </div>
+                <button class="btn-edit" onclick="editCedear('${ticker}')"><i class="fas fa-pencil-alt"></i></button>
+            </div>
+        `;
+    }).filter(card => card !== '').join('');
+
+    document.getElementById('cedearsList').innerHTML = cedearCards || '<div style="padding:10px; color:#94a3b8;">Sin CEDEARs. Haz click en "Agregar CEDEAR" para comenzar.</div>';
+    document.getElementById('totalCedearUSD').innerHTML = formatCurrencyUSD(totalCedearUSD);
+    document.getElementById('totalCedearARS').innerHTML = formatCurrency(totalCedearARS);
+
+    const totalWealth = totalARS + capitalBTCARS + totalCedearARS;
     document.getElementById('totalWealth').innerHTML = formatCurrency(totalWealth);
 }
 
@@ -1385,6 +1463,22 @@ window.editGoal = (id) => {
     }
 };
 
+window.editCedear = (ticker) => {
+    document.getElementById('cedearTicker').value = ticker;
+    document.getElementById('cedearAmount').value = cedearHoldings[ticker] || 0;
+    document.getElementById('cedearPrice').value = cedearPrices[ticker] || '';
+    updateCedearSelectOptions();
+    openModal('cedearModal');
+};
+
+function updateCedearSelectOptions() {
+    const select = document.getElementById('cedearSelect');
+    const currentTicker = document.getElementById('cedearTicker').value;
+    select.innerHTML = defaultCedears.map(ticker =>
+        `<option value="${ticker}" ${ticker === currentTicker ? 'selected' : ''}>${ticker}</option>`
+    ).join('');
+}
+
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -1470,6 +1564,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logoutBtn')?.addEventListener('click', logout);
     document.getElementById('addBtcBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('btcAmount')?.value); if(amt>0) addBTC(amt); });
     document.getElementById('removeBtcBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('btcAmount')?.value); if(amt>0) removeBTC(amt); });
+    document.getElementById('addCedearBtn')?.addEventListener('click', () => {
+        document.getElementById('cedearTicker').value = '';
+        document.getElementById('cedearAmount').value = '';
+        document.getElementById('cedearPrice').value = '';
+        updateCedearSelectOptions();
+        openModal('cedearModal');
+    });
     document.getElementById('generateExpenseReportBtn')?.addEventListener('click', () => renderExpenseReport());
     document.getElementById('sortPercentAsc')?.addEventListener('click', () => sortExpensePercent('asc'));
     document.getElementById('sortPercentDesc')?.addEventListener('click', () => sortExpensePercent('desc'));
@@ -1571,7 +1672,26 @@ document.addEventListener('DOMContentLoaded', () => {
         updateBtcMovement(id, { amount, type, note, imageUrl });
         closeModal();
     });
-    
+    document.getElementById('cedearForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const ticker = document.getElementById('cedearSelect').value;
+        const amount = parseFloat(document.getElementById('cedearAmount').value);
+        const priceUSD = parseFloat(document.getElementById('cedearPrice').value);
+
+        if (!ticker) { showToast("Selecciona un CEDEAR", "error"); return; }
+        if (isNaN(amount)) { showToast("Cantidad inválida", "error"); return; }
+
+        addOrUpdateCedear(ticker, amount);
+
+        if (!isNaN(priceUSD) && priceUSD > 0) {
+            cedearPrices[ticker] = priceUSD;
+            saveToLocalStorage();
+            syncToCloud();
+        }
+
+        closeModal();
+    });
+
     document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', closeModal));
     window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });
     document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
