@@ -513,6 +513,45 @@ async function updateCedearPrices() {
     }
 }
 
+// ========== DOLAR MEP ==========
+async function updateDolarMEP() {
+    try {
+        const res = await fetch('https://api.bluelytics.com.ar/v2/latest');
+        const data = await res.json();
+        dolarMEP = data.oficial.value_sell; // usa oficial como aproximación MEP
+        // Si querés MEP real podés usar otra API
+        console.log('Dólar MEP:', dolarMEP);
+    } catch(e) {
+        console.warn('No se pudo obtener dólar MEP, usando fallback:', dolarMEP);
+    }
+}
+
+// ========== PRECIO CEDEAR via Alpha Vantage ==========
+async function fetchCedearPrice(ticker) {
+    try {
+        const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const price = parseFloat(data['Global Quote']?.['05. price']);
+        if (!isNaN(price) && price > 0) {
+            cedearPrices[ticker] = price;
+            saveToLocalStorage();
+            return price;
+        }
+        return cedearPrices[ticker] || 0;
+    } catch(e) {
+        console.error(`Error obteniendo precio de ${ticker}:`, e);
+        return cedearPrices[ticker] || 0;
+    }
+}
+
+// Precio CEDEAR en ARS = (precio USD / ratio) * dolarMEP
+function getCedearPriceARS(ticker) {
+    const priceUSD = cedearPrices[ticker] || 0;
+    const ratio = BYMA_RATIOS[ticker] || 1;
+    return (priceUSD / ratio) * dolarMEP;
+}
+
 function formatCurrencyUSD(value) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(value);
 }
