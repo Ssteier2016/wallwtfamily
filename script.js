@@ -1099,17 +1099,51 @@ function renderBudgetPieChart() {
 function renderGoalsList() {
     const container = document.getElementById('goalsList');
     if (!container) return;
-    if (!Array.isArray(goals) || goals.length === 0) { container.innerHTML = '<div class="empty-state">Sin metas. Crea una meta de ahorro.</div>'; return; }
+    if (!Array.isArray(goals) || goals.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin metas. Crea una meta de ahorro.</div>';
+        return;
+    }
+
+    // Capital total automático
+    const capitalBTCARS = btcHoldings * currentBTCPriceARS;
+    const capitalBilleteras = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const capitalCedears = Object.keys(cedearHoldings).reduce((sum, ticker) => {
+        const amount = cedearHoldings[ticker] || 0;
+        const priceUSD = cedearPrices[ticker] || 0;
+        const ratio = BYMA_RATIOS[ticker] || 1;
+        const cedearPriceARS = (priceUSD / ratio) * dolarMEP;
+        return sum + (amount * cedearPriceARS);
+    }, 0);
+    const capitalTotal = capitalBTCARS + capitalBilleteras + capitalCedears;
+
     container.innerHTML = goals.map(g => {
-        const percent = (g.currentAmount / g.targetAmount) * 100;
+        // El progreso es el capital total, no el currentAmount manual
+        const progress = capitalTotal;
+        const percent = Math.min((progress / g.targetAmount) * 100, 100);
+        const achieved = progress >= g.targetAmount;
         return `
             <div class="goal-card">
                 <div class="goal-info">
                     <div style="display:flex; align-items:center; gap:10px;">
                         ${g.imageUrl ? `<img src="${g.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<div style="width:40px;height:40px;background:${g.color};border-radius:12px;"></div>`}
-                        <div><strong>${escapeHtml(g.name)}</strong><br><span style="font-size:0.75rem;">${formatCurrency(g.currentAmount)} de ${formatCurrency(g.targetAmount)}</span></div>
+                        <div>
+                            <strong>${escapeHtml(g.name)}</strong><br>
+                            <span style="font-size:0.75rem;">
+                                Capital actual: ${formatCurrency(progress)} de ${formatCurrency(g.targetAmount)}
+                            </span><br>
+                            <span style="font-size:0.72rem; color:#64748b;">
+                                BTC: ${formatCurrency(capitalBTCARS)} | 
+                                Billeteras: ${formatCurrency(capitalBilleteras)} | 
+                                CEDEARs: ${formatCurrency(capitalCedears)}
+                            </span>
+                        </div>
                     </div>
-                    <div class="budget-progress"><div class="budget-progress-bar" style="width: ${Math.min(percent,100)}%; background:${g.color};"></div></div>
+                    <div class="budget-progress" style="margin-top:8px;">
+                        <div class="budget-progress-bar" style="width: ${percent}%; background:${g.color};"></div>
+                    </div>
+                    <div style="font-size:0.75rem; margin-top:4px; color:${achieved ? '#10b981' : '#64748b'};">
+                        ${achieved ? '🎯 ¡Meta alcanzada!' : `${percent.toFixed(1)}% completado`}
+                    </div>
                 </div>
                 <div>
                     <button class="btn-edit" onclick="editGoal('${g.id}')"><i class="fas fa-pencil-alt"></i></button>
