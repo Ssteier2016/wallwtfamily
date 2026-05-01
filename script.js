@@ -747,32 +747,41 @@ function renderCapitalView() {
     document.getElementById('totalARSBalance').innerHTML = formatCurrency(totalARS);
 
     let totalCedearUSD = 0;
-    let totalCedearARS = 0;
-    const cedearCards = defaultCedears.map(ticker => {
-        const amount = cedearHoldings[ticker] || 0;
-        const priceUSD = cedearPrices[ticker] || 0;
-        const valueUSD = amount * priceUSD;
-        const valueARS = valueUSD * cedearUSDExchange;
-        totalCedearUSD += valueUSD;
-        totalCedearARS += valueARS;
+let totalCedearARS = 0;
 
-        if (amount === 0) return '';
-        return `
-            <div class="cedear-card" style="padding:10px; background:#f1f5f9; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                <div style="flex:1;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span><strong>${ticker}</strong></span>
-                        <span>${amount.toFixed(2)} unidades</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #64748b; margin-top:4px;">
-                        <span>${formatCurrencyUSD(valueUSD)}</span>
-                        <span>${formatCurrency(valueARS)}</span>
-                    </div>
+// Solo mostramos los que el usuario agregó
+const userCedears = Object.keys(cedearHoldings).filter(t => cedearHoldings[t] > 0);
+
+const cedearCards = userCedears.map(ticker => {
+    const amount = cedearHoldings[ticker] || 0;
+    const priceUSD = cedearPrices[ticker] || 0;
+    const ratio = BYMA_RATIOS[ticker] || 1;
+    const cedearPriceUSD = priceUSD / ratio; // precio del CEDEAR en USD
+    const cedearPriceARS = cedearPriceUSD * dolarMEP; // precio en ARS via MEP
+    const valueUSD = amount * cedearPriceUSD;
+    const valueARS = amount * cedearPriceARS;
+    totalCedearUSD += valueUSD;
+    totalCedearARS += valueARS;
+
+    return `
+        <div class="cedear-card" style="padding:12px; background:#f1f5f9; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <div style="flex:1;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span><strong>${ticker}</strong> <span style="font-size:0.75rem; color:#64748b;">(ratio ${ratio}:1)</span></span>
+                    <span style="font-size:0.85rem;">${amount.toFixed(2)} unidades</span>
                 </div>
-                <button class="btn-edit" onclick="editCedear('${ticker}')"><i class="fas fa-pencil-alt"></i></button>
+                <div style="display:flex; justify-content:space-between; font-size:0.82rem; color:#64748b; margin-top:4px;">
+                    <span>Precio: ${formatCurrencyUSD(cedearPriceUSD)} | ${formatCurrency(cedearPriceARS)}</span>
+                    <span>Total: ${formatCurrencyUSD(valueUSD)} | ${formatCurrency(valueARS)}</span>
+                </div>
             </div>
-        `;
-    }).filter(card => card !== '').join('');
+            <div style="display:flex; gap:6px;">
+                <button class="btn-edit" onclick="editCedear('${ticker}')"><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteCedearHandler('${ticker}')"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        </div>
+    `;
+}).join('');
 
     document.getElementById('cedearsList').innerHTML = cedearCards || '<div style="padding:10px; color:#94a3b8;">Sin CEDEARs. Haz click en "Agregar CEDEAR" para comenzar.</div>';
     document.getElementById('totalCedearUSD').innerHTML = formatCurrencyUSD(totalCedearUSD);
