@@ -1576,9 +1576,11 @@ window.deleteCedearHandler = (ticker) => {
 function updateCedearSelectOptions() {
     const select = document.getElementById('cedearSelect');
     const currentTicker = document.getElementById('cedearTicker').value;
-    select.innerHTML = defaultCedears.map(ticker =>
-        `<option value="${ticker}" ${ticker === currentTicker ? 'selected' : ''}>${ticker}</option>`
-    ).join('');
+    const allTickers = Object.keys(BYMA_RATIOS).sort();
+    select.innerHTML = '<option value="">-- Seleccionar CEDEAR --</option>' +
+        allTickers.map(ticker =>
+            `<option value="${ticker}" ${ticker === currentTicker ? 'selected' : ''}>${ticker} (ratio ${BYMA_RATIOS[ticker]}:1)</option>`
+        ).join('');
 }
 
 function openModal(modalId) {
