@@ -511,6 +511,29 @@ async function updateCedearPrices() {
     } catch (e) {
         console.error("Error obteniendo tasa USD/ARS:", e);
     }
+
+    const apiKey = '1RW4YGC5ZFFQHGA6';
+    const cedearTickers = defaultCedears;
+
+    for (const ticker of cedearTickers) {
+        try {
+            const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${apiKey}`;
+            const response = await fetch(url);
+            const result = await response.json();
+
+            if (result['Global Quote'] && result['Global Quote']['05. price']) {
+                const priceUSD = parseFloat(result['Global Quote']['05. price']);
+                if (!isNaN(priceUSD) && priceUSD > 0) {
+                    cedearPrices[ticker] = priceUSD;
+                }
+            }
+        } catch (e) {
+            console.error(`Error obteniendo precio de ${ticker}:`, e);
+        }
+    }
+
+    saveToLocalStorage();
+    renderCapitalView();
 }
 
 // ========== DOLAR MEP ==========
