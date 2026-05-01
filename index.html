@@ -308,20 +308,40 @@
             </form>
         </div>
     </div>
-
-    <!-- Modal para editar CEDEARs -->
-    <div id="cedearModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"><h3>Editar CEDEAR</h3><button class="modal-close">&times;</button></div>
-            <form id="cedearForm">
-                <input type="hidden" id="cedearTicker">
-                <div class="form-group"><label>CEDEAR</label><select id="cedearSelect" required></select></div>
-                <div class="form-group"><label>Cantidad</label><input type="number" id="cedearAmount" step="0.01" required placeholder="0.00"></div>
-                <div class="form-group"><label>Precio unitario (USD)</label><input type="number" id="cedearPrice" step="0.01" placeholder="Opcional: editar manualmente"></div>
-                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
-            </form>
-        </div>
+<div id="cedearModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><h3>Agregar / Editar CEDEAR</h3><button class="modal-close">&times;</button></div>
+        <form id="cedearForm">
+            <input type="hidden" id="cedearTicker">
+            <div class="form-group">
+                <label>Tipo</label>
+                <select id="cedearType" class="filter-select">
+                    <option value="cedear">CEDEAR (precio ÷ ratio)</option>
+                    <option value="accion">Acción directa (precio sin ratio)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ticker / CEDEAR</label>
+                <select id="cedearSelect" required></select>
+            </div>
+            <div class="form-group">
+                <label>Cantidad de CEDEARs</label>
+                <input type="number" id="cedearAmount" step="0.01" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Precio USD (opcional — si no se completa, se busca automáticamente)</label>
+                <input type="number" id="cedearPrice" step="0.01" placeholder="Se obtiene de Alpha Vantage">
+            </div>
+            <div style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">
+                💡 El precio en ARS se calcula: (Precio USD ÷ Ratio) × Dólar MEP
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary modal-close">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar</button>
+            </div>
+        </form>
     </div>
+</div>
 
     <div id="toast" class="toast"></div>
 
