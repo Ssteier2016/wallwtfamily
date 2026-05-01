@@ -1558,8 +1558,19 @@ window.editCedear = (ticker) => {
     document.getElementById('cedearTicker').value = ticker;
     document.getElementById('cedearAmount').value = cedearHoldings[ticker] || 0;
     document.getElementById('cedearPrice').value = cedearPrices[ticker] || '';
+    document.getElementById('cedearType').value = 'cedear'; // nuevo campo
     updateCedearSelectOptions();
     openModal('cedearModal');
+};
+
+window.deleteCedearHandler = (ticker) => {
+    if (confirm(`¿Eliminar ${ticker} de tu cartera?`)) {
+        delete cedearHoldings[ticker];
+        saveToLocalStorage();
+        syncToCloud();
+        renderCapitalView();
+        showToast(`${ticker} eliminado`, 'success');
+    }
 };
 
 function updateCedearSelectOptions() {
