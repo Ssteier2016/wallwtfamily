@@ -714,6 +714,7 @@ function getCategoryImage(id) { const c = categories.find(c => c.id === id); ret
 let currentCharts = {};
 
 function refreshAllViews() {
+    updateDolarMEP();
     renderDashboard();
     renderTransactionsList();
     renderAccountsList();
