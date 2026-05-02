@@ -1252,22 +1252,22 @@ function renderCapitalView() {
     document.getElementById('capitalBTCARS').innerHTML = formatCurrency(capitalBTCARS);
 
     const capitalSOL = solHoldings;
-    const capitalSOLUSD = capitalSOL * currentSOLPriceUSD;
-    const capitalSOLARS = capitalSOL * currentSOLPriceARS;
+    const capitalSOLUSD = capitalSOL * (currentSOLPriceUSD || 0);
+    const capitalSOLARS = capitalSOL * (currentSOLPriceARS || 0);
     document.getElementById('capitalSOL').innerHTML = `${capitalSOL.toFixed(8)} SOL`;
     document.getElementById('capitalSOLUSD').innerHTML = formatCurrencyUSD(capitalSOLUSD);
     document.getElementById('capitalSOLARS').innerHTML = formatCurrency(capitalSOLARS);
 
     const capitalBNB = bnbHoldings;
-    const capitalBNBUSD = capitalBNB * currentBNBPriceUSD;
-    const capitalBNBARS = capitalBNB * currentBNBPriceARS;
+    const capitalBNBUSD = capitalBNB * (currentBNBPriceUSD || 0);
+    const capitalBNBARS = capitalBNB * (currentBNBPriceARS || 0);
     document.getElementById('capitalBNB').innerHTML = `${capitalBNB.toFixed(8)} BNB`;
     document.getElementById('capitalBNBUSD').innerHTML = formatCurrencyUSD(capitalBNBUSD);
     document.getElementById('capitalBNBARS').innerHTML = formatCurrency(capitalBNBARS);
 
     const capitalNEXO = nexoHoldings;
-    const capitalNEXOUSD = capitalNEXO * currentNEXOPriceUSD;
-    const capitalNEXOARS = capitalNEXO * currentNEXOPriceARS;
+    const capitalNEXOUSD = capitalNEXO * (currentNEXOPriceUSD || 0);
+    const capitalNEXOARS = capitalNEXO * (currentNEXOPriceARS || 0);
     document.getElementById('capitalNEXO').innerHTML = `${capitalNEXO.toFixed(8)} NEXO`;
     document.getElementById('capitalNEXOUSD').innerHTML = formatCurrencyUSD(capitalNEXOUSD);
     document.getElementById('capitalNEXOARS').innerHTML = formatCurrency(capitalNEXOARS);
