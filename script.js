@@ -560,14 +560,24 @@ function deleteGoal(id) {
 
 // ========== BITCOIN con saldo acumulado ==========
 let currentBTCPriceUSD = 0, currentBTCPriceARS = 0;
+let currentSOLPriceUSD = 0, currentSOLPriceARS = 0;
+let currentBNBPriceUSD = 0, currentBNBPriceARS = 0;
+let currentNEXOPriceUSD = 0, currentNEXOPriceARS = 0;
 
 async function updateBTCPrice() {
     try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,ars');
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,solana,binancecoin,nexo&vs_currencies=usd,ars');
         const data = await res.json();
-        currentBTCPriceUSD = data.bitcoin.usd;
-        currentBTCPriceARS = data.bitcoin.ars;
-        cedearUSDExchange = data.bitcoin.ars / data.bitcoin.usd;
+        currentBTCPriceUSD = data.bitcoin?.usd || 0;
+        currentBTCPriceARS = data.bitcoin?.ars || 0;
+        currentSOLPriceUSD = data.solana?.usd || 0;
+        currentSOLPriceARS = data.solana?.ars || 0;
+        currentBNBPriceUSD = data.binancecoin?.usd || 0;
+        currentBNBPriceARS = data.binancecoin?.ars || 0;
+        currentNEXOPriceUSD = data.nexo?.usd || 0;
+        currentNEXOPriceARS = data.nexo?.ars || 0;
+        if (currentBTCPriceUSD > 0) cedearUSDExchange = currentBTCPriceARS / currentBTCPriceUSD;
+
         const btcPriceUSDElem = document.getElementById('btcPriceUSD');
         const btcPriceARSElem = document.getElementById('btcPriceARS');
         const totalBTCelem = document.getElementById('totalBTC');
@@ -578,7 +588,42 @@ async function updateBTCPrice() {
         if (totalBTCelem) totalBTCelem.innerHTML = btcHoldings.toFixed(8);
         if (btcValueUSDelem) btcValueUSDelem.innerHTML = formatCurrencyUSD(btcHoldings * currentBTCPriceUSD);
         if (btcValueARSelem) btcValueARSelem.innerHTML = formatCurrency(btcHoldings * currentBTCPriceARS);
-    } catch(e) { console.error(e); }
+
+        const solPriceUSDElem = document.getElementById('solPriceUSD');
+        const solPriceARSElem = document.getElementById('solPriceARS');
+        const totalSOLelem = document.getElementById('totalSOL');
+        const solValueUSDelem = document.getElementById('solValueUSD');
+        const solValueARSelem = document.getElementById('solValueARS');
+        if (solPriceUSDElem) solPriceUSDElem.innerHTML = `$${currentSOLPriceUSD.toLocaleString()}`;
+        if (solPriceARSElem) solPriceARSElem.innerHTML = `$${currentSOLPriceARS.toLocaleString()}`;
+        if (totalSOLelem) totalSOLelem.innerHTML = solHoldings.toFixed(8);
+        if (solValueUSDelem) solValueUSDelem.innerHTML = formatCurrencyUSD(solHoldings * currentSOLPriceUSD);
+        if (solValueARSelem) solValueARSelem.innerHTML = formatCurrency(solHoldings * currentSOLPriceARS);
+
+        const bnbPriceUSDElem = document.getElementById('bnbPriceUSD');
+        const bnbPriceARSElem = document.getElementById('bnbPriceARS');
+        const totalBNBelem = document.getElementById('totalBNB');
+        const bnbValueUSDelem = document.getElementById('bnbValueUSD');
+        const bnbValueARSelem = document.getElementById('bnbValueARS');
+        if (bnbPriceUSDElem) bnbPriceUSDElem.innerHTML = `$${currentBNBPriceUSD.toLocaleString()}`;
+        if (bnbPriceARSElem) bnbPriceARSElem.innerHTML = `$${currentBNBPriceARS.toLocaleString()}`;
+        if (totalBNBelem) totalBNBelem.innerHTML = bnbHoldings.toFixed(8);
+        if (bnbValueUSDelem) bnbValueUSDelem.innerHTML = formatCurrencyUSD(bnbHoldings * currentBNBPriceUSD);
+        if (bnbValueARSelem) bnbValueARSelem.innerHTML = formatCurrency(bnbHoldings * currentBNBPriceARS);
+
+        const nexoPriceUSDElem = document.getElementById('nexoPriceUSD');
+        const nexoPriceARSElem = document.getElementById('nexoPriceARS');
+        const totalNEXOelem = document.getElementById('totalNEXO');
+        const nexoValueUSDelem = document.getElementById('nexoValueUSD');
+        const nexoValueARSelem = document.getElementById('nexoValueARS');
+        if (nexoPriceUSDElem) nexoPriceUSDElem.innerHTML = `$${currentNEXOPriceUSD.toLocaleString()}`;
+        if (nexoPriceARSElem) nexoPriceARSElem.innerHTML = `$${currentNEXOPriceARS.toLocaleString()}`;
+        if (totalNEXOelem) totalNEXOelem.innerHTML = nexoHoldings.toFixed(8);
+        if (nexoValueUSDelem) nexoValueUSDelem.innerHTML = formatCurrencyUSD(nexoHoldings * currentNEXOPriceUSD);
+        if (nexoValueARSelem) nexoValueARSelem.innerHTML = formatCurrency(nexoHoldings * currentNEXOPriceARS);
+
+        renderCapitalView();
+    } catch(e) { console.error('Error actualizando precios crypto:', e); }
 }
 
 async function updateCedearPrices() {
