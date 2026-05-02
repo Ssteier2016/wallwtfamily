@@ -27,6 +27,9 @@
                 <a href="#" class="nav-item" data-view="goals"><i class="fas fa-bullseye"></i><span>Metas</span></a>
                 <a href="#" class="nav-item" data-view="calendar"><i class="fas fa-calendar-alt"></i><span>Calendario</span></a>
                 <a href="#" class="nav-item" data-view="bitcoin"><i class="fab fa-bitcoin"></i><span>Bitcoin</span></a>
+                <a href="#" class="nav-item" data-view="solana"><i class="fas fa-coins"></i><span>Solana</span></a>
+                <a href="#" class="nav-item" data-view="binance"><i class="fas fa-coins"></i><span>Binance</span></a>
+                <a href="#" class="nav-item" data-view="nexo"><i class="fas fa-coins"></i><span>Nexo</span></a>
                 <a href="#" class="nav-item" data-view="capital"><i class="fas fa-chart-pie"></i><span>Capital</span></a>
                 <a href="#" class="nav-item" data-view="expenses"><i class="fas fa-chart-bar"></i><span>Gastos</span></a>
             </nav>
@@ -143,6 +146,90 @@
                 <div class="recent-transactions">
                     <h3>Historial de movimientos BTC (saldo acumulado)</h3>
                     <div id="btcHistoryList" class="transactions-list"></div>
+                </div>
+            </div>
+
+            <!-- Solana -->
+            <div id="solanaView" class="view">
+                <div class="view-header"><h2>Solana</h2></div>
+                <div class="summary-cards" style="grid-template-columns:repeat(2,1fr);">
+                    <div class="card"><div class="card-icon" style="background:#00ffa320; color:#00ffa3;"><i class="fas fa-coins"></i></div><div class="card-content"><span class="card-label">Precio SOL (USD)</span><span class="card-value" id="solPriceUSD">---</span></div></div>
+                    <div class="card"><div class="card-icon" style="background:#00ffa320; color:#00ffa3;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Precio SOL (ARS)</span><span class="card-value" id="solPriceARS">---</span></div></div>
+                </div>
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-content">
+                        <span class="card-label">Mi cartera SOL</span>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="number" id="solAmount" step="any" placeholder="Cantidad de SOL" style="flex:1;">
+                            <button id="addSolBtn" class="btn-primary">Agregar SOL</button>
+                            <button id="removeSolBtn" class="btn-secondary">Restar SOL</button>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <strong>Total SOL:</strong> <span id="totalSOL">0.0000</span> SOL<br>
+                            <strong>Valor en USD:</strong> <span id="solValueUSD">$0.00</span><br>
+                            <strong>Valor en ARS:</strong> <span id="solValueARS">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-transactions">
+                    <h3>Historial de movimientos SOL (saldo acumulado)</h3>
+                    <div id="solHistoryList" class="transactions-list"></div>
+                </div>
+            </div>
+
+            <!-- Binance Coin -->
+            <div id="binanceView" class="view">
+                <div class="view-header"><h2>Binance Coin</h2></div>
+                <div class="summary-cards" style="grid-template-columns:repeat(2,1fr);">
+                    <div class="card"><div class="card-icon" style="background:#f3ba2f20; color:#f3ba2f;"><i class="fas fa-coins"></i></div><div class="card-content"><span class="card-label">Precio BNB (USD)</span><span class="card-value" id="bnbPriceUSD">---</span></div></div>
+                    <div class="card"><div class="card-icon" style="background:#f3ba2f20; color:#f3ba2f;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Precio BNB (ARS)</span><span class="card-value" id="bnbPriceARS">---</span></div></div>
+                </div>
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-content">
+                        <span class="card-label">Mi cartera BNB</span>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="number" id="bnbAmount" step="any" placeholder="Cantidad de BNB" style="flex:1;">
+                            <button id="addBnbBtn" class="btn-primary">Agregar BNB</button>
+                            <button id="removeBnbBtn" class="btn-secondary">Restar BNB</button>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <strong>Total BNB:</strong> <span id="totalBNB">0.0000</span> BNB<br>
+                            <strong>Valor en USD:</strong> <span id="bnbValueUSD">$0.00</span><br>
+                            <strong>Valor en ARS:</strong> <span id="bnbValueARS">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-transactions">
+                    <h3>Historial de movimientos BNB (saldo acumulado)</h3>
+                    <div id="bnbHistoryList" class="transactions-list"></div>
+                </div>
+            </div>
+
+            <!-- Nexo -->
+            <div id="nexoView" class="view">
+                <div class="view-header"><h2>Nexo</h2></div>
+                <div class="summary-cards" style="grid-template-columns:repeat(2,1fr);">
+                    <div class="card"><div class="card-icon" style="background:#22222220; color:#222222;"><i class="fas fa-coins"></i></div><div class="card-content"><span class="card-label">Precio NEXO (USD)</span><span class="card-value" id="nexoPriceUSD">---</span></div></div>
+                    <div class="card"><div class="card-icon" style="background:#22222220; color:#222222;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Precio NEXO (ARS)</span><span class="card-value" id="nexoPriceARS">---</span></div></div>
+                </div>
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-content">
+                        <span class="card-label">Mi cartera NEXO</span>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="number" id="nexoAmount" step="any" placeholder="Cantidad de NEXO" style="flex:1;">
+                            <button id="addNexoBtn" class="btn-primary">Agregar NEXO</button>
+                            <button id="removeNexoBtn" class="btn-secondary">Restar NEXO</button>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <strong>Total NEXO:</strong> <span id="totalNEXO">0.0000</span> NEXO<br>
+                            <strong>Valor en USD:</strong> <span id="nexoValueUSD">$0.00</span><br>
+                            <strong>Valor en ARS:</strong> <span id="nexoValueARS">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-transactions">
+                    <h3>Historial de movimientos NEXO (saldo acumulado)</h3>
+                    <div id="nexoHistoryList" class="transactions-list"></div>
                 </div>
             </div>
 
@@ -343,6 +430,52 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal para editar movimiento SOL -->
+    <div id="editSolModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar movimiento SOL</h3><button class="modal-close">&times;</button></div>
+            <form id="editSolForm">
+                <input type="hidden" id="editSolId">
+                <div class="form-group"><label>Cantidad (SOL)</label><input type="number" id="editSolAmount" step="any" required></div>
+                <div class="form-group"><label>Tipo</label><select id="editSolType"><option value="compra">Compra</option><option value="venta">Venta</option></select></div>
+                <div class="form-group"><label>Comentario</label><textarea id="editSolNote" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="editSolImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para editar movimiento BNB -->
+    <div id="editBnbModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar movimiento BNB</h3><button class="modal-close">&times;</button></div>
+            <form id="editBnbForm">
+                <input type="hidden" id="editBnbId">
+                <div class="form-group"><label>Cantidad (BNB)</label><input type="number" id="editBnbAmount" step="any" required></div>
+                <div class="form-group"><label>Tipo</label><select id="editBnbType"><option value="compra">Compra</option><option value="venta">Venta</option></select></div>
+                <div class="form-group"><label>Comentario</label><textarea id="editBnbNote" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="editBnbImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para editar movimiento NEXO -->
+    <div id="editNexoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar movimiento NEXO</h3><button class="modal-close">&times;</button></div>
+            <form id="editNexoForm">
+                <input type="hidden" id="editNexoId">
+                <div class="form-group"><label>Cantidad (NEXO)</label><input type="number" id="editNexoAmount" step="any" required></div>
+                <div class="form-group"><label>Tipo</label><select id="editNexoType"><option value="compra">Compra</option><option value="venta">Venta</option></select></div>
+                <div class="form-group"><label>Comentario</label><textarea id="editNexoNote" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="editNexoImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
 <div id="cedearModal" class="modal">
     <div class="modal-content">
         <div class="modal-header"><h3>Agregar / Editar CEDEAR</h3><button class="modal-close">&times;</button></div>
