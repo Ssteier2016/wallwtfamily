@@ -42,6 +42,12 @@ let budgets = [];
 let goals = [];
 let btcHoldings = 0;
 let btcHistory = [];
+let solHoldings = 0;
+let solHistory = [];
+let bnbHoldings = 0;
+let bnbHistory = [];
+let nexoHoldings = 0;
+let nexoHistory = [];
 let cedearHoldings = {};
 let cedearPrices = {};
 let cedearUSDExchange = 1;
@@ -149,6 +155,12 @@ function initializeData() {
         const savedGoals = localStorage.getItem('finanzas_goals');
         const savedBtc = localStorage.getItem('finanzas_btc');
         const savedBtcHistory = localStorage.getItem('finanzas_btc_history');
+        const savedSol = localStorage.getItem('finanzas_sol');
+        const savedSolHistory = localStorage.getItem('finanzas_sol_history');
+        const savedBnb = localStorage.getItem('finanzas_bnb');
+        const savedBnbHistory = localStorage.getItem('finanzas_bnb_history');
+        const savedNexo = localStorage.getItem('finanzas_nexo');
+        const savedNexoHistory = localStorage.getItem('finanzas_nexo_history');
         const savedCedears = localStorage.getItem('finanzas_cedear_holdings');
         const savedCedearPrices = localStorage.getItem('finanzas_cedear_prices');
 
@@ -157,19 +169,28 @@ function initializeData() {
         categories = savedCategories ? JSON.parse(savedCategories) : JSON.parse(JSON.stringify(defaultCategories));
         budgets = savedBudgets ? JSON.parse(savedBudgets) : [];
         goals = savedGoals ? JSON.parse(savedGoals) : [];
-        btcHoldings = savedBtc ? parseFloat(savedBtc) : 0;
-        btcHistory = savedBtcHistory ? JSON.parse(savedBtcHistory) : [];
-        cedearHoldings = savedCedears ? JSON.parse(savedCedears) : {};
-        cedearPrices = savedCedearPrices ? JSON.parse(savedCedearPrices) : {};
+          btcHoldings = savedBtc ? parseFloat(savedBtc) : 0;
+          btcHistory = savedBtcHistory ? JSON.parse(savedBtcHistory) : [];
+          solHoldings = savedSol ? parseFloat(savedSol) : 0;
+          solHistory = savedSolHistory ? JSON.parse(savedSolHistory) : [];
+          bnbHoldings = savedBnb ? parseFloat(savedBnb) : 0;
+          bnbHistory = savedBnbHistory ? JSON.parse(savedBnbHistory) : [];
+          nexoHoldings = savedNexo ? parseFloat(savedNexo) : 0;
+          nexoHistory = savedNexoHistory ? JSON.parse(savedNexoHistory) : [];
+          cedearHoldings = savedCedears ? JSON.parse(savedCedears) : {};
+          cedearPrices = savedCedearPrices ? JSON.parse(savedCedearPrices) : {};
 
         if (!Array.isArray(transactions)) transactions = [];
         if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
         if (!Array.isArray(categories)) categories = JSON.parse(JSON.stringify(defaultCategories));
         if (!Array.isArray(budgets)) budgets = [];
         if (!Array.isArray(goals)) goals = [];
-        if (!Array.isArray(btcHistory)) btcHistory = [];
-        if (typeof cedearHoldings !== 'object') cedearHoldings = {};
-        if (typeof cedearPrices !== 'object') cedearPrices = {};
+          if (!Array.isArray(btcHistory)) btcHistory = [];
+          if (!Array.isArray(solHistory)) solHistory = [];
+          if (!Array.isArray(bnbHistory)) bnbHistory = [];
+          if (!Array.isArray(nexoHistory)) nexoHistory = [];
+          if (typeof cedearHoldings !== 'object') cedearHoldings = {};
+          if (typeof cedearPrices !== 'object') cedearPrices = {};
 
         recalculateAllBalances();
         saveToLocalStorage();
@@ -182,8 +203,12 @@ function initializeData() {
         goals = [];
         btcHoldings = 0;
         btcHistory = [];
-        cedearHoldings = {};
-        cedearPrices = {};
+        solHoldings = 0;
+        solHistory = [];
+        bnbHoldings = 0;
+        bnbHistory = [];
+        nexoHoldings = 0;
+        nexoHistory = [];
         recalculateAllBalances();
         saveToLocalStorage();
     }
@@ -197,6 +222,12 @@ function saveToLocalStorage() {
     localStorage.setItem('finanzas_goals', JSON.stringify(goals));
     localStorage.setItem('finanzas_btc', btcHoldings.toString());
     localStorage.setItem('finanzas_btc_history', JSON.stringify(btcHistory));
+    localStorage.setItem('finanzas_sol', solHoldings.toString());
+    localStorage.setItem('finanzas_sol_history', JSON.stringify(solHistory));
+    localStorage.setItem('finanzas_bnb', bnbHoldings.toString());
+    localStorage.setItem('finanzas_bnb_history', JSON.stringify(bnbHistory));
+    localStorage.setItem('finanzas_nexo', nexoHoldings.toString());
+    localStorage.setItem('finanzas_nexo_history', JSON.stringify(nexoHistory));
     localStorage.setItem('finanzas_cedear_holdings', JSON.stringify(cedearHoldings));
     localStorage.setItem('finanzas_cedear_prices', JSON.stringify(cedearPrices));
 }
@@ -221,7 +252,9 @@ async function syncToCloud() {
     try {
         const userDocRef = doc(db, 'users', currentUser.uid);
         await setDoc(userDocRef, {
-            transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory, cedearHoldings, cedearPrices,
+            transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
+            solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
+            cedearHoldings, cedearPrices,
             lastUpdated: new Date().toISOString()
         }, { merge: true });
     } catch (e) { console.error(e); }
@@ -239,10 +272,16 @@ async function loadFromCloud() {
             categories = Array.isArray(data.categories) ? data.categories : [];
             budgets = Array.isArray(data.budgets) ? data.budgets : [];
             goals = Array.isArray(data.goals) ? data.goals : [];
-            btcHoldings = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
-            btcHistory = Array.isArray(data.btcHistory) ? data.btcHistory : [];
-            cedearHoldings = typeof data.cedearHoldings === 'object' ? data.cedearHoldings : {};
-            cedearPrices = typeof data.cedearPrices === 'object' ? data.cedearPrices : {};
+        btcHoldings = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
+        btcHistory = Array.isArray(data.btcHistory) ? data.btcHistory : [];
+        solHoldings = typeof data.solHoldings === 'number' ? data.solHoldings : 0;
+        solHistory = Array.isArray(data.solHistory) ? data.solHistory : [];
+        bnbHoldings = typeof data.bnbHoldings === 'number' ? data.bnbHoldings : 0;
+        bnbHistory = Array.isArray(data.bnbHistory) ? data.bnbHistory : [];
+        nexoHoldings = typeof data.nexoHoldings === 'number' ? data.nexoHoldings : 0;
+        nexoHistory = Array.isArray(data.nexoHistory) ? data.nexoHistory : [];
+        cedearHoldings = typeof data.cedearHoldings === 'object' ? data.cedearHoldings : {};
+        cedearPrices = typeof data.cedearPrices === 'object' ? data.cedearPrices : {};
             recalculateAllBalances();
             saveToLocalStorage();
             refreshAllViews();
@@ -262,6 +301,12 @@ function importFromJSON(jsonData) {
         if (data.goals && Array.isArray(data.goals)) goals = data.goals;
         if (typeof data.btcHoldings === 'number') btcHoldings = data.btcHoldings;
         if (data.btcHistory && Array.isArray(data.btcHistory)) btcHistory = data.btcHistory;
+        if (typeof data.solHoldings === 'number') solHoldings = data.solHoldings;
+        if (data.solHistory && Array.isArray(data.solHistory)) solHistory = data.solHistory;
+        if (typeof data.bnbHoldings === 'number') bnbHoldings = data.bnbHoldings;
+        if (data.bnbHistory && Array.isArray(data.bnbHistory)) bnbHistory = data.bnbHistory;
+        if (typeof data.nexoHoldings === 'number') nexoHoldings = data.nexoHoldings;
+        if (data.nexoHistory && Array.isArray(data.nexoHistory)) nexoHistory = data.nexoHistory;
         if (data.cedearHoldings && typeof data.cedearHoldings === 'object') cedearHoldings = data.cedearHoldings;
         if (data.cedearPrices && typeof data.cedearPrices === 'object') cedearPrices = data.cedearPrices;
         recalculateAllBalances();
@@ -277,7 +322,11 @@ function importFromJSON(jsonData) {
 }
 
 function exportToJSON() {
-    const exportData = { transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory, cedearHoldings, cedearPrices, exportDate: new Date().toISOString() };
+    const exportData = {
+        transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
+        solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
+        cedearHoldings, cedearPrices, exportDate: new Date().toISOString()
+    };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -629,6 +678,69 @@ function addBTC(amount) {
     showToast(`${amount} BTC agregado`, "success");
 }
 
+function addSOL(amount) {
+    if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
+    solHoldings += amount;
+    const newMove = {
+        id: 'sol-' + Date.now(),
+        amount: amount,
+        type: 'compra',
+        date: new Date().toISOString(),
+        priceUSD: currentSOLPriceUSD,
+        priceARS: currentSOLPriceARS,
+        note: '',
+        imageUrl: ''
+    };
+    solHistory.push(newMove);
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderSOLHistory();
+    showToast(`${amount} SOL agregado`, "success");
+}
+
+function addBNB(amount) {
+    if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
+    bnbHoldings += amount;
+    const newMove = {
+        id: 'bnb-' + Date.now(),
+        amount: amount,
+        type: 'compra',
+        date: new Date().toISOString(),
+        priceUSD: currentBNBPriceUSD,
+        priceARS: currentBNBPriceARS,
+        note: '',
+        imageUrl: ''
+    };
+    bnbHistory.push(newMove);
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderBNBHistory();
+    showToast(`${amount} BNB agregado`, "success");
+}
+
+function addNEXO(amount) {
+    if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
+    nexoHoldings += amount;
+    const newMove = {
+        id: 'nexo-' + Date.now(),
+        amount: amount,
+        type: 'compra',
+        date: new Date().toISOString(),
+        priceUSD: currentNEXOPriceUSD,
+        priceARS: currentNEXOPriceARS,
+        note: '',
+        imageUrl: ''
+    };
+    nexoHistory.push(newMove);
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderNEXOHistory();
+    showToast(`${amount} NEXO agregado`, "success");
+}
+
 function removeBTC(amount) {
     if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
     if (btcHoldings < amount) { showToast("No tienes suficientes BTC", "error"); return; }
@@ -651,6 +763,72 @@ function removeBTC(amount) {
     showToast(`${amount} BTC restado`, "success");
 }
 
+function removeSOL(amount) {
+    if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
+    if (solHoldings < amount) { showToast("No tienes suficientes SOL", "error"); return; }
+    solHoldings -= amount;
+    const newMove = {
+        id: 'sol-' + Date.now(),
+        amount: amount,
+        type: 'venta',
+        date: new Date().toISOString(),
+        priceUSD: currentSOLPriceUSD,
+        priceARS: currentSOLPriceARS,
+        note: '',
+        imageUrl: ''
+    };
+    solHistory.push(newMove);
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderSOLHistory();
+    showToast(`${amount} SOL restado`, "success");
+}
+
+function removeBNB(amount) {
+    if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
+    if (bnbHoldings < amount) { showToast("No tienes suficientes BNB", "error"); return; }
+    bnbHoldings -= amount;
+    const newMove = {
+        id: 'bnb-' + Date.now(),
+        amount: amount,
+        type: 'venta',
+        date: new Date().toISOString(),
+        priceUSD: currentBNBPriceUSD,
+        priceARS: currentBNBPriceARS,
+        note: '',
+        imageUrl: ''
+    };
+    bnbHistory.push(newMove);
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderBNBHistory();
+    showToast(`${amount} BNB restado`, "success");
+}
+
+function removeNEXO(amount) {
+    if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
+    if (nexoHoldings < amount) { showToast("No tienes suficientes NEXO", "error"); return; }
+    nexoHoldings -= amount;
+    const newMove = {
+        id: 'nexo-' + Date.now(),
+        amount: amount,
+        type: 'venta',
+        date: new Date().toISOString(),
+        priceUSD: currentNEXOPriceUSD,
+        priceARS: currentNEXOPriceARS,
+        note: '',
+        imageUrl: ''
+    };
+    nexoHistory.push(newMove);
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderNEXOHistory();
+    showToast(`${amount} NEXO restado`, "success");
+}
+
 function updateBtcMovement(id, updatedData) {
     const index = btcHistory.findIndex(m => m.id === id);
     if (index === -1) return;
@@ -659,13 +837,13 @@ function updateBtcMovement(id, updatedData) {
     const oldType = oldMove.type;
     const newAmount = updatedData.amount;
     const newType = updatedData.type;
-    
+
     if (oldType === 'compra') btcHoldings -= oldAmount;
     else btcHoldings += oldAmount;
-    
+
     if (newType === 'compra') btcHoldings += newAmount;
     else btcHoldings -= newAmount;
-    
+
     btcHistory[index] = { ...oldMove, ...updatedData, amount: parseFloat(newAmount) };
     saveToLocalStorage();
     syncToCloud();
@@ -673,6 +851,78 @@ function updateBtcMovement(id, updatedData) {
     renderBTCHistory();
     refreshAllViews();
     showToast('Movimiento BTC actualizado', 'success');
+}
+
+function updateSolMovement(id, updatedData) {
+    const index = solHistory.findIndex(m => m.id === id);
+    if (index === -1) return;
+    const oldMove = solHistory[index];
+    const oldAmount = oldMove.amount;
+    const oldType = oldMove.type;
+    const newAmount = updatedData.amount;
+    const newType = updatedData.type;
+
+    if (oldType === 'compra') solHoldings -= oldAmount;
+    else solHoldings += oldAmount;
+
+    if (newType === 'compra') solHoldings += newAmount;
+    else solHoldings -= newAmount;
+
+    solHistory[index] = { ...oldMove, ...updatedData, amount: parseFloat(newAmount) };
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderSOLHistory();
+    refreshAllViews();
+    showToast('Movimiento SOL actualizado', 'success');
+}
+
+function updateBnbMovement(id, updatedData) {
+    const index = bnbHistory.findIndex(m => m.id === id);
+    if (index === -1) return;
+    const oldMove = bnbHistory[index];
+    const oldAmount = oldMove.amount;
+    const oldType = oldMove.type;
+    const newAmount = updatedData.amount;
+    const newType = updatedData.type;
+
+    if (oldType === 'compra') bnbHoldings -= oldAmount;
+    else bnbHoldings += oldAmount;
+
+    if (newType === 'compra') bnbHoldings += newAmount;
+    else bnbHoldings -= newAmount;
+
+    bnbHistory[index] = { ...oldMove, ...updatedData, amount: parseFloat(newAmount) };
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderBNBHistory();
+    refreshAllViews();
+    showToast('Movimiento BNB actualizado', 'success');
+}
+
+function updateNexoMovement(id, updatedData) {
+    const index = nexoHistory.findIndex(m => m.id === id);
+    if (index === -1) return;
+    const oldMove = nexoHistory[index];
+    const oldAmount = oldMove.amount;
+    const oldType = oldMove.type;
+    const newAmount = updatedData.amount;
+    const newType = updatedData.type;
+
+    if (oldType === 'compra') nexoHoldings -= oldAmount;
+    else nexoHoldings += oldAmount;
+
+    if (newType === 'compra') nexoHoldings += newAmount;
+    else nexoHoldings -= newAmount;
+
+    nexoHistory[index] = { ...oldMove, ...updatedData, amount: parseFloat(newAmount) };
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderNEXOHistory();
+    refreshAllViews();
+    showToast('Movimiento NEXO actualizado', 'success');
 }
 
 function deleteBtcMovement(id) {
@@ -687,6 +937,48 @@ function deleteBtcMovement(id) {
     renderBTCHistory();
     refreshAllViews();
     showToast('Movimiento BTC eliminado', 'success');
+}
+
+function deleteSolMovement(id) {
+    const move = solHistory.find(m => m.id === id);
+    if (!move) return;
+    if (move.type === 'compra') solHoldings -= move.amount;
+    else solHoldings += move.amount;
+    solHistory = solHistory.filter(m => m.id !== id);
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderSOLHistory();
+    refreshAllViews();
+    showToast('Movimiento SOL eliminado', 'success');
+}
+
+function deleteBnbMovement(id) {
+    const move = bnbHistory.find(m => m.id === id);
+    if (!move) return;
+    if (move.type === 'compra') bnbHoldings -= move.amount;
+    else bnbHoldings += move.amount;
+    bnbHistory = bnbHistory.filter(m => m.id !== id);
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderBNBHistory();
+    refreshAllViews();
+    showToast('Movimiento BNB eliminado', 'success');
+}
+
+function deleteNexoMovement(id) {
+    const move = nexoHistory.find(m => m.id === id);
+    if (!move) return;
+    if (move.type === 'compra') nexoHoldings -= move.amount;
+    else nexoHoldings += move.amount;
+    nexoHistory = nexoHistory.filter(m => m.id !== id);
+    saveToLocalStorage();
+    syncToCloud();
+    updateBTCPrice();
+    renderNEXOHistory();
+    refreshAllViews();
+    showToast('Movimiento NEXO eliminado', 'success');
 }
 
 // ========== CRUD CEDEARS ==========
@@ -741,6 +1033,120 @@ function renderBTCHistory() {
     `).join('');
 }
 
+function renderSOLHistory() {
+    const container = document.getElementById('solHistoryList');
+    if (!container) return;
+    if (!Array.isArray(solHistory) || solHistory.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin movimientos de SOL</div>';
+        return;
+    }
+    const sorted = [...solHistory].sort((a,b) => new Date(a.date) - new Date(b.date));
+    let runningBalance = 0;
+    const items = [];
+    for (const move of sorted) {
+        if (move.type === 'compra') runningBalance += move.amount;
+        else runningBalance -= move.amount;
+        items.push({ ...move, runningBalance });
+    }
+    items.reverse();
+    container.innerHTML = items.map(m => `
+        <div class="transaction-item">
+            <div class="transaction-info">
+                <div class="transaction-icon ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
+                    ${m.imageUrl ? `<img src="${m.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<i class="fas ${m.type === 'compra' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>`}
+                </div>
+                <div class="transaction-details">
+                    <div class="transaction-description">${m.type === 'compra' ? 'Compra de SOL' : 'Venta de SOL'}${m.note ? `: ${escapeHtml(m.note)}` : ''}</div>
+                    <div class="transaction-meta">${formatDate(m.date)} • Precio: ${formatCurrencyUSD(m.priceUSD)} / ${formatCurrency(m.priceARS)} • Saldo después: ${m.runningBalance.toFixed(8)} SOL</div>
+                </div>
+            </div>
+            <div class="transaction-amount ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
+                ${m.type === 'compra' ? '+' : '-'} ${m.amount.toFixed(8)} SOL
+            </div>
+            <div class="transaction-actions">
+                <button class="btn-edit" onclick="editSolMovement('${m.id}')"><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteSolMovementHandler('${m.id}')"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderBNBHistory() {
+    const container = document.getElementById('bnbHistoryList');
+    if (!container) return;
+    if (!Array.isArray(bnbHistory) || bnbHistory.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin movimientos de BNB</div>';
+        return;
+    }
+    const sorted = [...bnbHistory].sort((a,b) => new Date(a.date) - new Date(b.date));
+    let runningBalance = 0;
+    const items = [];
+    for (const move of sorted) {
+        if (move.type === 'compra') runningBalance += move.amount;
+        else runningBalance -= move.amount;
+        items.push({ ...move, runningBalance });
+    }
+    items.reverse();
+    container.innerHTML = items.map(m => `
+        <div class="transaction-item">
+            <div class="transaction-info">
+                <div class="transaction-icon ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
+                    ${m.imageUrl ? `<img src="${m.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<i class="fas ${m.type === 'compra' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>`}
+                </div>
+                <div class="transaction-details">
+                    <div class="transaction-description">${m.type === 'compra' ? 'Compra de BNB' : 'Venta de BNB'}${m.note ? `: ${escapeHtml(m.note)}` : ''}</div>
+                    <div class="transaction-meta">${formatDate(m.date)} • Precio: ${formatCurrencyUSD(m.priceUSD)} / ${formatCurrency(m.priceARS)} • Saldo después: ${m.runningBalance.toFixed(8)} BNB</div>
+                </div>
+            </div>
+            <div class="transaction-amount ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
+                ${m.type === 'compra' ? '+' : '-'} ${m.amount.toFixed(8)} BNB
+            </div>
+            <div class="transaction-actions">
+                <button class="btn-edit" onclick="editBnbMovement('${m.id}')"><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteBnbMovementHandler('${m.id}')"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderNEXOHistory() {
+    const container = document.getElementById('nexoHistoryList');
+    if (!container) return;
+    if (!Array.isArray(nexoHistory) || nexoHistory.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin movimientos de NEXO</div>';
+        return;
+    }
+    const sorted = [...nexoHistory].sort((a,b) => new Date(a.date) - new Date(b.date));
+    let runningBalance = 0;
+    const items = [];
+    for (const move of sorted) {
+        if (move.type === 'compra') runningBalance += move.amount;
+        else runningBalance -= move.amount;
+        items.push({ ...move, runningBalance });
+    }
+    items.reverse();
+    container.innerHTML = items.map(m => `
+        <div class="transaction-item">
+            <div class="transaction-info">
+                <div class="transaction-icon ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
+                    ${m.imageUrl ? `<img src="${m.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<i class="fas ${m.type === 'compra' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>`}
+                </div>
+                <div class="transaction-details">
+                    <div class="transaction-description">${m.type === 'compra' ? 'Compra de NEXO' : 'Venta de NEXO'}${m.note ? `: ${escapeHtml(m.note)}` : ''}</div>
+                    <div class="transaction-meta">${formatDate(m.date)} • Precio: ${formatCurrencyUSD(m.priceUSD)} / ${formatCurrency(m.priceARS)} • Saldo después: ${m.runningBalance.toFixed(8)} NEXO</div>
+                </div>
+            </div>
+            <div class="transaction-amount ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
+                ${m.type === 'compra' ? '+' : '-'} ${m.amount.toFixed(8)} NEXO
+            </div>
+            <div class="transaction-actions">
+                <button class="btn-edit" onclick="editNexoMovement('${m.id}')"><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteNexoMovementHandler('${m.id}')"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
 window.editBtcMovement = (id) => {
     const move = btcHistory.find(m => m.id === id);
     if (!move) return;
@@ -754,6 +1160,51 @@ window.editBtcMovement = (id) => {
 
 window.deleteBtcMovementHandler = (id) => {
     if (confirm('¿Eliminar este movimiento BTC?')) deleteBtcMovement(id);
+};
+
+window.editSolMovement = (id) => {
+    const move = solHistory.find(m => m.id === id);
+    if (!move) return;
+    document.getElementById('editSolId').value = move.id;
+    document.getElementById('editSolAmount').value = move.amount;
+    document.getElementById('editSolType').value = move.type;
+    document.getElementById('editSolNote').value = move.note || '';
+    document.getElementById('editSolImageUrl').value = move.imageUrl || '';
+    openModal('editSolModal');
+};
+
+window.deleteSolMovementHandler = (id) => {
+    if (confirm('¿Eliminar este movimiento SOL?')) deleteSolMovement(id);
+};
+
+window.editBnbMovement = (id) => {
+    const move = bnbHistory.find(m => m.id === id);
+    if (!move) return;
+    document.getElementById('editBnbId').value = move.id;
+    document.getElementById('editBnbAmount').value = move.amount;
+    document.getElementById('editBnbType').value = move.type;
+    document.getElementById('editBnbNote').value = move.note || '';
+    document.getElementById('editBnbImageUrl').value = move.imageUrl || '';
+    openModal('editBnbModal');
+};
+
+window.deleteBnbMovementHandler = (id) => {
+    if (confirm('¿Eliminar este movimiento BNB?')) deleteBnbMovement(id);
+};
+
+window.editNexoMovement = (id) => {
+    const move = nexoHistory.find(m => m.id === id);
+    if (!move) return;
+    document.getElementById('editNexoId').value = move.id;
+    document.getElementById('editNexoAmount').value = move.amount;
+    document.getElementById('editNexoType').value = move.type;
+    document.getElementById('editNexoNote').value = move.note || '';
+    document.getElementById('editNexoImageUrl').value = move.imageUrl || '';
+    openModal('editNexoModal');
+};
+
+window.deleteNexoMovementHandler = (id) => {
+    if (confirm('¿Eliminar este movimiento NEXO?')) deleteNexoMovement(id);
 };
 
 // ========== GETTERS ==========
@@ -1811,6 +2262,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logoutBtn')?.addEventListener('click', logout);
     document.getElementById('addBtcBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('btcAmount')?.value); if(amt>0) addBTC(amt); });
     document.getElementById('removeBtcBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('btcAmount')?.value); if(amt>0) removeBTC(amt); });
+    document.getElementById('addSolBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('solAmount')?.value); if(amt>0) addSOL(amt); });
+    document.getElementById('removeSolBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('solAmount')?.value); if(amt>0) removeSOL(amt); });
+    document.getElementById('addBnbBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('bnbAmount')?.value); if(amt>0) addBNB(amt); });
+    document.getElementById('removeBnbBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('bnbAmount')?.value); if(amt>0) removeBNB(amt); });
+    document.getElementById('addNexoBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('nexoAmount')?.value); if(amt>0) addNEXO(amt); });
+    document.getElementById('removeNexoBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('nexoAmount')?.value); if(amt>0) removeNEXO(amt); });
     document.getElementById('addCedearBtn')?.addEventListener('click', () => {
         document.getElementById('cedearTicker').value = '';
         document.getElementById('cedearAmount').value = '';
