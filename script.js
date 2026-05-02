@@ -1218,6 +1218,12 @@ let currentCharts = {};
 
 function refreshAllViews() {
     updateDolarMEP();
+    updateBTCPrice();
+    updateCedearPrices();
+    const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    goals.forEach(g => g.currentAmount = totalBalance);
+    saveToLocalStorage();
+    syncToCloud();
     renderDashboard();
     renderTransactionsList();
     renderAccountsList();
@@ -1225,9 +1231,10 @@ function refreshAllViews() {
     renderBudgetsList();
     renderGoalsList();
     renderCalendar();
-    updateBTCPrice();
-    updateCedearPrices();
     renderBTCHistory();
+    renderSOLHistory();
+    renderBNBHistory();
+    renderNEXOHistory();
     renderCapitalView();
     updateFilters();
     updateBudgetMonthSelector();
