@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Mis Finanzas - Control Total</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-wallet"></i> Mis Finanzas</h2>
+                <button class="close-sidebar" id="closeSidebar">&times;</button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-view="dashboard"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
+                <a href="#" class="nav-item" data-view="transactions"><i class="fas fa-list-ul"></i><span>Transacciones</span></a>
+                <a href="#" class="nav-item" data-view="accounts"><i class="fas fa-credit-card"></i><span>Billeteras</span></a>
+                <a href="#" class="nav-item" data-view="categories"><i class="fas fa-tags"></i><span>Categorías</span></a>
+                <a href="#" class="nav-item" data-view="budgets"><i class="fas fa-chart-simple"></i><span>Presupuestos</span></a>
+                <a href="#" class="nav-item" data-view="goals"><i class="fas fa-bullseye"></i><span>Metas</span></a>
+                <a href="#" class="nav-item" data-view="calendar"><i class="fas fa-calendar-alt"></i><span>Calendario</span></a>
+                <a href="#" class="nav-item" data-view="bitcoin"><i class="fab fa-bitcoin"></i><span>Bitcoin</span></a>
+                <a href="#" class="nav-item" data-view="solana"><i class="fas fa-coins"></i><span>Solana</span></a>
+                <a href="#" class="nav-item" data-view="binance"><i class="fas fa-coins"></i><span>Binance</span></a>
+                <a href="#" class="nav-item" data-view="nexo"><i class="fas fa-coins"></i><span>Nexo</span></a>
+                <a href="#" class="nav-item" data-view="capital"><i class="fas fa-chart-pie"></i><span>Capital</span></a>
+                <a href="#" class="nav-item" data-view="expenses"><i class="fas fa-chart-bar"></i><span>Gastos</span></a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn-import" id="importBackupBtn"><i class="fas fa-file-import"></i> Importar Backup</button>
+                <button class="btn-export" id="exportBackupBtn"><i class="fas fa-file-export"></i> Exportar Backup</button>
+                <button class="btn-import" id="shareWalletBtn" style="background:#e2e8f0; margin-top:5px;"><i class="fas fa-share-alt"></i> Compartir Wallet</button>
+                <button class="btn-import" id="joinWalletBtn" style="background:#e2e8f0;"><i class="fas fa-code-branch"></i> Unirse con código</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="top-bar">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h1 id="currentViewTitle">Dashboard</h1>
+                <div class="top-bar-actions">
+                    <div id="userInfo" style="display:flex; align-items:center; gap:10px;">
+                        <span id="userName" style="font-size:0.8rem;"></span>
+                        <button id="loginGoogleBtn" class="btn-icon" title="Iniciar sesión"><i class="fab fa-google"></i></button>
+                        <button id="logoutBtn" class="btn-icon" style="display:none;" title="Cerrar sesión"><i class="fas fa-sign-out-alt"></i></button>
+                    </div>
+                    <button class="btn-icon" id="addTransactionBtn" title="Nueva transacción"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+
+            <!-- Dashboard -->
+            <div id="dashboardView" class="view active">
+                <div class="summary-cards">
+                    <div class="card balance-card"><div class="card-icon"><i class="fas fa-university"></i></div><div class="card-content"><span class="card-label">Balance Total</span><span class="card-value" id="totalBalance">$0.00</span></div></div>
+                    <div class="card income-card"><div class="card-icon"><i class="fas fa-arrow-down"></i></div><div class="card-content"><span class="card-label">Ingresos</span><span class="card-value" id="totalIncome">$0.00</span></div></div>
+                    <div class="card expense-card"><div class="card-icon"><i class="fas fa-arrow-up"></i></div><div class="card-content"><span class="card-label">Gastos</span><span class="card-value" id="totalExpense">$0.00</span></div></div>
+                </div>
+                <div class="charts-row" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="chart-container"><h3>Gastos por Categoría</h3><canvas id="expenseChart"></canvas></div>
+                    <div class="chart-container"><h3>Ingresos por Categoría</h3><canvas id="incomeChart"></canvas></div>
+                </div>
+                <div class="charts-row">
+                    <div class="chart-container"><h3>Balance por Billetera</h3><canvas id="balanceChart"></canvas></div>
+                </div>
+                <div class="recent-transactions"><div class="section-header"><h3>Transacciones Recientes</h3><a href="#" class="view-all" data-view="transactions">Ver todas →</a></div><div class="transactions-list" id="recentTransactionsList"></div></div>
+            </div>
+
+            <!-- Transacciones -->
+            <div id="transactionsView" class="view">
+                <div class="view-header">
+                    <div class="filter-bar">
+                        <select id="filterType" class="filter-select"><option value="all">Todas</option><option value="ingreso">Ingresos</option><option value="gasto">Gastos</option></select>
+                        <select id="filterAccount" class="filter-select"><option value="all">Todas las billeteras</option></select>
+                        <select id="filterCategory" class="filter-select"><option value="all">Todas las categorías</option></select>
+                        <input type="month" id="filterMonth" class="filter-date">
+                        <button class="btn-filter-clear" id="clearFilters">Limpiar</button>
+                    </div>
+                    <button class="btn-primary" id="addTransactionBtn2"><i class="fas fa-plus"></i> Nueva transacción</button>
+                </div>
+                <div class="transactions-table-container">
+                    <table class="transactions-table">
+                        <thead><tr><th>Fecha</th><th>Imagen</th><th>Descripción</th><th>Categoría</th><th>Billetera</th><th>Monto</th><th>Acciones</th></tr></thead>
+                        <tbody id="transactionsList"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Billeteras -->
+            <div id="accountsView" class="view"><div class="view-header"><h2>Billeteras</h2><button class="btn-primary" id="addAccountBtn"><i class="fas fa-plus"></i> Nueva billetera</button></div><div class="accounts-grid" id="accountsList"></div></div>
+
+            <!-- Categorías -->
+            <div id="categoriesView" class="view"><div class="view-header"><h2>Categorías</h2><button class="btn-primary" id="addCategoryBtn"><i class="fas fa-plus"></i> Nueva categoría</button></div><div class="categories-grid" id="categoriesList"></div></div>
+
+            <!-- Presupuestos -->
+            <div id="budgetsView" class="view">
+                <div class="view-header"><h2>Presupuestos por Categoría y Mes</h2><button class="btn-primary" id="addBudgetBtn"><i class="fas fa-plus"></i> Añadir presupuesto</button></div>
+                <select id="budgetMonthSelect" class="filter-select" style="margin-bottom:20px;"></select>
+                <div id="budgetsList" class="budgets-grid"></div>
+                <div class="chart-container" style="margin-top:20px;">
+                    <h3>Distribución del Presupuesto Total</h3>
+                    <canvas id="budgetPieChart"></canvas>
+                </div>
+                <div id="budgetTotalAmount" style="text-align:center; font-weight:bold; margin-top:10px;"></div>
+            </div>
+
+            <!-- Metas -->
+            <div id="goalsView" class="view"><div class="view-header"><h2>Metas de Ahorro</h2><button class="btn-primary" id="addGoalBtn"><i class="fas fa-plus"></i> Nueva meta</button></div><div id="goalsList" class="goals-grid"></div></div>
+
+            <!-- Calendario -->
+            <div id="calendarView" class="view">
+                <div class="calendar-header"><button id="prevMonth"><i class="fas fa-chevron-left"></i></button><h3 id="calendarMonthYear"></h3><button id="nextMonth"><i class="fas fa-chevron-right"></i></button></div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+                <div id="dailyTransactions" style="margin-top:20px; background:white; border-radius:16px; padding:16px;"></div>
+            </div>
+
+            <!-- Bitcoin -->
+            <div id="bitcoinView" class="view">
+                <div class="view-header"><h2>Bitcoin</h2></div>
+                <div class="summary-cards" style="grid-template-columns:repeat(2,1fr);">
+                    <div class="card"><div class="card-icon" style="background:#f7931a20; color:#f7931a;"><i class="fab fa-bitcoin"></i></div><div class="card-content"><span class="card-label">Precio BTC (USD)</span><span class="card-value" id="btcPriceUSD">---</span></div></div>
+                    <div class="card"><div class="card-icon" style="background:#f7931a20; color:#f7931a;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Precio BTC (ARS)</span><span class="card-value" id="btcPriceARS">---</span></div></div>
+                </div>
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-content">
+                        <span class="card-label">Mi cartera BTC</span>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="number" id="btcAmount" step="any" placeholder="Cantidad de BTC" style="flex:1;">
+                            <button id="addBtcBtn" class="btn-primary">Agregar BTC</button>
+                            <button id="removeBtcBtn" class="btn-secondary">Restar BTC</button>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <strong>Total BTC:</strong> <span id="totalBTC">0.0000</span> BTC<br>
+                            <strong>Valor en USD:</strong> <span id="btcValueUSD">$0.00</span><br>
+                            <strong>Valor en ARS:</strong> <span id="btcValueARS">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-transactions">
+                    <h3>Historial de movimientos BTC (saldo acumulado)</h3>
+                    <div id="btcHistoryList" class="transactions-list"></div>
+                </div>
+            </div>
+
+            <!-- Solana -->
+            <div id="solanaView" class="view">
+                <div class="view-header"><h2>Solana</h2></div>
+                <div class="summary-cards" style="grid-template-columns:repeat(2,1fr);">
+                    <div class="card"><div class="card-icon" style="background:#00ffa320; color:#00ffa3;"><i class="fas fa-coins"></i></div><div class="card-content"><span class="card-label">Precio SOL (USD)</span><span class="card-value" id="solPriceUSD">---</span></div></div>
+                    <div class="card"><div class="card-icon" style="background:#00ffa320; color:#00ffa3;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Precio SOL (ARS)</span><span class="card-value" id="solPriceARS">---</span></div></div>
+                </div>
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-content">
+                        <span class="card-label">Mi cartera SOL</span>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="number" id="solAmount" step="any" placeholder="Cantidad de SOL" style="flex:1;">
+                            <button id="addSolBtn" class="btn-primary">Agregar SOL</button>
+                            <button id="removeSolBtn" class="btn-secondary">Restar SOL</button>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <strong>Total SOL:</strong> <span id="totalSOL">0.0000</span> SOL<br>
+                            <strong>Valor en USD:</strong> <span id="solValueUSD">$0.00</span><br>
+                            <strong>Valor en ARS:</strong> <span id="solValueARS">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-transactions">
+                    <h3>Historial de movimientos SOL (saldo acumulado)</h3>
+                    <div id="solHistoryList" class="transactions-list"></div>
+                </div>
+            </div>
+
+            <!-- Binance Coin -->
+            <div id="binanceView" class="view">
+                <div class="view-header"><h2>Binance Coin</h2></div>
+                <div class="summary-cards" style="grid-template-columns:repeat(2,1fr);">
+                    <div class="card"><div class="card-icon" style="background:#f3ba2f20; color:#f3ba2f;"><i class="fas fa-coins"></i></div><div class="card-content"><span class="card-label">Precio BNB (USD)</span><span class="card-value" id="bnbPriceUSD">---</span></div></div>
+                    <div class="card"><div class="card-icon" style="background:#f3ba2f20; color:#f3ba2f;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Precio BNB (ARS)</span><span class="card-value" id="bnbPriceARS">---</span></div></div>
+                </div>
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-content">
+                        <span class="card-label">Mi cartera BNB</span>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="number" id="bnbAmount" step="any" placeholder="Cantidad de BNB" style="flex:1;">
+                            <button id="addBnbBtn" class="btn-primary">Agregar BNB</button>
+                            <button id="removeBnbBtn" class="btn-secondary">Restar BNB</button>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <strong>Total BNB:</strong> <span id="totalBNB">0.0000</span> BNB<br>
+                            <strong>Valor en USD:</strong> <span id="bnbValueUSD">$0.00</span><br>
+                            <strong>Valor en ARS:</strong> <span id="bnbValueARS">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-transactions">
+                    <h3>Historial de movimientos BNB (saldo acumulado)</h3>
+                    <div id="bnbHistoryList" class="transactions-list"></div>
+                </div>
+            </div>
+
+            <!-- Nexo -->
+            <div id="nexoView" class="view">
+                <div class="view-header"><h2>Nexo</h2></div>
+                <div class="summary-cards" style="grid-template-columns:repeat(2,1fr);">
+                    <div class="card"><div class="card-icon" style="background:#22222220; color:#222222;"><i class="fas fa-coins"></i></div><div class="card-content"><span class="card-label">Precio NEXO (USD)</span><span class="card-value" id="nexoPriceUSD">---</span></div></div>
+                    <div class="card"><div class="card-icon" style="background:#22222220; color:#222222;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Precio NEXO (ARS)</span><span class="card-value" id="nexoPriceARS">---</span></div></div>
+                </div>
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-content">
+                        <span class="card-label">Mi cartera NEXO</span>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="number" id="nexoAmount" step="any" placeholder="Cantidad de NEXO" style="flex:1;">
+                            <button id="addNexoBtn" class="btn-primary">Agregar NEXO</button>
+                            <button id="removeNexoBtn" class="btn-secondary">Restar NEXO</button>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <strong>Total NEXO:</strong> <span id="totalNEXO">0.0000</span> NEXO<br>
+                            <strong>Valor en USD:</strong> <span id="nexoValueUSD">$0.00</span><br>
+                            <strong>Valor en ARS:</strong> <span id="nexoValueARS">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-transactions">
+                    <h3>Historial de movimientos NEXO (saldo acumulado)</h3>
+                    <div id="nexoHistoryList" class="transactions-list"></div>
+                </div>
+            </div>
+
+            <!-- Capital: saldos en BTC y ARS por billetera -->
+         <div id="capitalView" class="view">
+    <div class="view-header">
+        <h2>Capital</h2>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <select id="capitalFilter" class="filter-select" onchange="renderCapitalView()">
+                <option value="all">Ver todo</option>
+                <option value="btc">Solo BTC</option>
+                <option value="billeteras">Solo Billeteras</option>
+                <option value="cedears">Solo CEDEARs</option>
+            </select>
+            <button class="btn-primary" id="addCedearBtn"><i class="fas fa-plus"></i> Agregar CEDEAR</button>
+        </div>
+    </div>
+
+    <!-- Resumen total -->
+    <div class="summary-cards" style="grid-template-columns: repeat(2,1fr);">
+        <div class="card">
+            <div class="card-icon" style="background:#10b98120; color:#10b981;"><i class="fas fa-coins"></i></div>
+            <div class="card-content">
+                <span class="card-label">Patrimonio Total (ARS)</span>
+                <span class="card-value" id="totalWealth">$0.00</span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-icon" style="background:#3b82f620; color:#3b82f6;"><i class="fas fa-dollar-sign"></i></div>
+            <div class="card-content">
+                <span class="card-label">Patrimonio Total (USD)</span>
+                <span class="card-value" id="totalWealthUSD">$0.00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección BTC -->
+    <div id="capitalBTCSection" class="card" style="margin-bottom:20px;">
+        <div class="card-content">
+            <span class="card-label" style="font-weight:700; font-size:1rem;">₿ Bitcoin</span>
+            <div class="summary-cards" style="grid-template-columns: repeat(3,1fr); margin-top:10px;">
+                <div><span class="card-label">Cantidad</span><div class="card-value" id="capitalBTC" style="font-size:1rem;">0 BTC</div></div>
+                <div><span class="card-label">Valor USD</span><div class="card-value" id="capitalBTCUSD" style="font-size:1rem;">$0.00</div></div>
+                <div><span class="card-label">Valor ARS</span><div class="card-value" id="capitalBTCARS" style="font-size:1rem;">$0.00</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección Billeteras -->
+    <div id="capitalBilleterasSection" class="card" style="margin-bottom:20px;">
+        <div class="card-content">
+            <span class="card-label" style="font-weight:700; font-size:1rem;">👛 Billeteras</span>
+            <div id="accountsCapitalList" style="margin-top:10px;"></div>
+            <hr style="margin:10px 0;">
+            <div><strong>Total Billeteras:</strong> <span id="totalARSBalance">$0.00</span></div>
+        </div>
+    </div>
+
+    <!-- Sección CEDEARs -->
+    <div id="capitalCedearSection" class="card" style="margin-bottom:20px;">
+        <div class="card-content">
+            <span class="card-label" style="font-weight:700; font-size:1rem;">📈 CEDEARs</span>
+            <div id="cedearsList" style="margin-top:10px; display:grid; gap:10px;"></div>
+            <hr style="margin:10px 0;">
+            <div><strong>Total CEDEARs (USD):</strong> <span id="totalCedearUSD">$0.00</span></div>
+            <div><strong>Total CEDEARs (ARS):</strong> <span id="totalCedearARS">$0.00</span></div>
+        </div>
+    </div>
+</div>
+
+            <!-- Gastos (reportes) con filtro por billetera y columna de presupuesto -->
+            <div id="expensesView" class="view">
+                <div class="view-header"><h2>Reporte de Gastos</h2></div>
+                <div class="reports-header">
+                    <div class="report-filters">
+                        <select id="expenseReportType" class="filter-select">
+                            <option value="category">Por Categoría</option>
+                            <option value="monthly">Por Mes</option>
+                        </select>
+                        <select id="expenseAccountFilter" class="filter-select">
+                            <option value="all">Todas las billeteras</option>
+                        </select>
+                        <input type="month" id="expenseReportMonth" class="filter-date">
+                        <button class="btn-primary" id="generateExpenseReportBtn">Generar</button>
+                    </div>
+                </div>
+                <div class="report-container"><canvas id="expenseReportChart"></canvas></div>
+                <div class="report-details" id="expenseReportDetails"></div>
+                
+                <!-- Tabla de gastos con ordenamiento por porcentaje y columna de presupuesto -->
+                <div style="margin-top:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>Detalle de Gastos por Categoría (con porcentaje y presupuesto)</h3>
+                        <div>
+                            <button id="sortPercentAsc" class="btn-secondary" style="margin-right:5px;">% Menor a Mayor</button>
+                            <button id="sortPercentDesc" class="btn-secondary">% Mayor a Menor</button>
+                        </div>
+                    </div>
+                    <div class="transactions-table-container" style="margin-top:10px;">
+                        <table class="transactions-table" id="expensePercentTable">
+                            <thead><tr><th>Categoría</th><th>Monto Gastado</th><th>Porcentaje</th><th>Presupuesto (mes)</th><th>Estado</th></tr></thead>
+                            <tbody id="expensePercentBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="recent-transactions" style="margin-top:20px;">
+                    <h3>Historial de Gastos (últimas transacciones)</h3>
+                    <div class="transactions-list" id="expenseHistoryList"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modales completos -->
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3 id="modalTitle">Nueva transacción</h3><button class="modal-close">&times;</button></div>
+            <form id="transactionForm">
+                <input type="hidden" id="transactionId">
+                <div class="form-group"><label>Tipo</label><div class="type-toggle"><button type="button" class="type-btn active" data-type="gasto">Gasto</button><button type="button" class="type-btn" data-type="ingreso">Ingreso</button></div></div>
+                <div class="form-group"><label>Monto</label><input type="number" id="amount" step="0.01" required placeholder="0.00"></div>
+                <div class="form-group"><label>Fecha</label><input type="date" id="date" required></div>
+                <div class="form-group"><label>Categoría</label><select id="categoryId" required></select></div>
+                <div class="form-group"><label>Billetera</label><select id="accId" required></select></div>
+                <div class="form-group"><label>Nota / Comentario</label><textarea id="note" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group discount-group"><label><input type="checkbox" id="hasDiscount"> Aplicar descuento</label><div id="discountFields" style="display:none;"><div class="discount-type"><label><input type="radio" name="discountType" value="percent" checked> Porcentaje (%)</label><label><input type="radio" name="discountType" value="fixed"> Monto fijo</label></div><input type="number" id="discountValue" step="0.01" placeholder="Valor del descuento"></div></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="accountModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3 id="accountModalTitle">Nueva billetera</h3><button class="modal-close">&times;</button></div>
+            <form id="accountForm">
+                <input type="hidden" id="accountId">
+                <div class="form-group"><label>Nombre</label><input type="text" id="accName" required placeholder="Ej: Principal, Ahorros"></div>
+                <div class="form-group"><label>Ícono (clase Font Awesome)</label><input type="text" id="accIcon" value="fa-wallet" placeholder="fa-wallet, fa-bank, etc."></div>
+                <div class="form-group"><label>Color</label><select id="accColor"><option value="bg-emerald-100 text-emerald-600">Verde</option><option value="bg-blue-100 text-blue-600">Azul</option><option value="bg-purple-100 text-purple-600">Morado</option><option value="bg-amber-100 text-amber-600">Ámbar</option><option value="bg-rose-100 text-rose-600">Rosa</option></select></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="accImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3 id="categoryModalTitle">Nueva categoría</h3><button class="modal-close">&times;</button></div>
+            <form id="categoryForm">
+                <input type="hidden" id="categoryId">
+                <div class="form-group"><label>Nombre</label><input type="text" id="catName" required></div>
+                <div class="form-group"><label>Color</label><input type="color" id="catColor" value="#10b981"></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="catImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="budgetModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Presupuesto</h3><button class="modal-close">&times;</button></div>
+            <form id="budgetForm">
+                <input type="hidden" id="budgetId">
+                <div class="form-group"><label>Categoría</label><select id="budgetCategoryId" required></select></div>
+                <div class="form-group"><label>Monto presupuestado (ARS)</label><input type="number" id="budgetAmount" step="0.01" required></div>
+                <div class="form-group"><label>Mes</label><input type="month" id="budgetMonth" required></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="goalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Meta de ahorro</h3><button class="modal-close">&times;</button></div>
+            <form id="goalForm">
+                <input type="hidden" id="goalId">
+                <div class="form-group"><label>Nombre de la meta</label><input type="text" id="goalName" required></div>
+                <div class="form-group"><label>Monto objetivo (ARS)</label><input type="number" id="goalTarget" step="0.01" required></div>
+                <div class="form-group"><label>Color</label><input type="color" id="goalColor" value="#3b82f6"></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="goalImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para editar movimiento BTC -->
+    <div id="editBtcModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar movimiento BTC</h3><button class="modal-close">&times;</button></div>
+            <form id="editBtcForm">
+                <input type="hidden" id="editBtcId">
+                <div class="form-group"><label>Cantidad (BTC)</label><input type="number" id="editBtcAmount" step="any" required></div>
+                <div class="form-group"><label>Tipo</label><select id="editBtcType"><option value="compra">Compra</option><option value="venta">Venta</option></select></div>
+                <div class="form-group"><label>Comentario</label><textarea id="editBtcNote" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="editBtcImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para editar movimiento SOL -->
+    <div id="editSolModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar movimiento SOL</h3><button class="modal-close">&times;</button></div>
+            <form id="editSolForm">
+                <input type="hidden" id="editSolId">
+                <div class="form-group"><label>Cantidad (SOL)</label><input type="number" id="editSolAmount" step="any" required></div>
+                <div class="form-group"><label>Tipo</label><select id="editSolType"><option value="compra">Compra</option><option value="venta">Venta</option></select></div>
+                <div class="form-group"><label>Comentario</label><textarea id="editSolNote" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="editSolImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para editar movimiento BNB -->
+    <div id="editBnbModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar movimiento BNB</h3><button class="modal-close">&times;</button></div>
+            <form id="editBnbForm">
+                <input type="hidden" id="editBnbId">
+                <div class="form-group"><label>Cantidad (BNB)</label><input type="number" id="editBnbAmount" step="any" required></div>
+                <div class="form-group"><label>Tipo</label><select id="editBnbType"><option value="compra">Compra</option><option value="venta">Venta</option></select></div>
+                <div class="form-group"><label>Comentario</label><textarea id="editBnbNote" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="editBnbImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para editar movimiento NEXO -->
+    <div id="editNexoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar movimiento NEXO</h3><button class="modal-close">&times;</button></div>
+            <form id="editNexoForm">
+                <input type="hidden" id="editNexoId">
+                <div class="form-group"><label>Cantidad (NEXO)</label><input type="number" id="editNexoAmount" step="any" required></div>
+                <div class="form-group"><label>Tipo</label><select id="editNexoType"><option value="compra">Compra</option><option value="venta">Venta</option></select></div>
+                <div class="form-group"><label>Comentario</label><textarea id="editNexoNote" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="editNexoImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+<div id="cedearModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><h3>Agregar / Editar CEDEAR</h3><button class="modal-close">&times;</button></div>
+        <form id="cedearForm">
+            <input type="hidden" id="cedearTicker">
+            <div class="form-group">
+                <label>Tipo</label>
+                <select id="cedearType" class="filter-select">
+                    <option value="cedear">CEDEAR (precio ÷ ratio)</option>
+                    <option value="accion">Acción directa (precio sin ratio)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ticker / CEDEAR</label>
+                <select id="cedearSelect" required></select>
+            </div>
+            <div class="form-group">
+                <label>Cantidad de CEDEARs</label>
+                <input type="number" id="cedearAmount" step="0.01" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Precio USD (opcional — si no se completa, se busca automáticamente)</label>
+                <input type="number" id="cedearPrice" step="0.01" placeholder="Se obtiene de Alpha Vantage">
+            </div>
+            <div style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">
+                💡 El precio en ARS se calcula: (Precio USD ÷ Ratio) × Dólar MEP
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary modal-close">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+    <div id="toast" class="toast"></div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
