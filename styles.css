@@ -812,6 +812,31 @@ body {
     opacity: 1;
 }
 
+/* Submenu */
+.nav-group {
+    position: relative;
+}
+
+.submenu {
+    display: none;
+    padding-left: 20px;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.nav-group:hover .submenu {
+    display: flex;
+}
+
+.submenu-icon {
+    margin-left: auto;
+    transition: transform 0.2s;
+}
+
+.nav-group:hover .submenu-icon {
+    transform: rotate(180deg);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .sidebar {

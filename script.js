@@ -45,6 +45,33 @@ let btcHistory = [];
 let cedearHoldings = {};
 let cedearPrices = {};
 let cedearUSDExchange = 1;
+let cedearSortBy = 'none'; // 'value', 'percent', 'none'
+const cedearImages = {
+    'TSLA': 'https://logo.clearbit.com/tesla.com',
+    'MSFT': 'https://logo.clearbit.com/microsoft.com',
+    'AAPL': 'https://logo.clearbit.com/apple.com',
+    'AMZN': 'https://logo.clearbit.com/amazon.com',
+    'NVDA': 'https://logo.clearbit.com/nvidia.com',
+    'YPF': 'https://logo.clearbit.com/ypf.com',
+    'ALUAR': 'https://logo.clearbit.com/aluar.com.ar',
+    'CAT': 'https://logo.clearbit.com/caterpillar.com',
+    'BA': 'https://logo.clearbit.com/boeing.com',
+    'KO': 'https://logo.clearbit.com/coca-cola.com',
+    'MELI': 'https://logo.clearbit.com/mercadolibre.com',
+    'META': 'https://logo.clearbit.com/meta.com',
+    'GOOGL': 'https://logo.clearbit.com/google.com',
+    'SHOP': 'https://logo.clearbit.com/shopify.com',
+    'NKE': 'https://logo.clearbit.com/nike.com',
+    // Acciones argentinas
+    'YPF.BA': 'https://logo.clearbit.com/ypf.com',
+    'GGAL.BA': 'https://logo.clearbit.com/ggal.com.ar',
+    'PAMP.BA': 'https://logo.clearbit.com/pampaenergia.com',
+    'COME.BA': 'https://logo.clearbit.com/sociedad-comercial-del-plata.com',
+    'TXAR.BA': 'https://logo.clearbit.com/ternium.com',
+    'ALUA.BA': 'https://logo.clearbit.com/aluar.com.ar',
+    'BMA.BA': 'https://logo.clearbit.com/banco-macro.com.ar',
+    'BBAR.BA': 'https://logo.clearbit.com/bbva.com.ar'
+};
 let dolarMEP = 1000; // fallback
 
 const ALPHA_VANTAGE_KEY = '1RW4YGC5ZFFQHGA6'; // ← reemplazá con tu key
@@ -86,7 +113,9 @@ const BYMA_RATIOS = {
     HDB:2, HMC:1, HMY:1, JMIA:1, JOYY:5, KEP:1, NG:0.25, NGG:2,
     NLM:2, NMR:1, NOKA:1, NSAN:1, RACE:83, RGTI:2, SNA:6, SNP:3,
     SPCE:0.5, STNE:3, SUZ:1, TIIAY:1, TIMB:1, TRIP:2, TRVV:6,
-    TTM:1, TV:3, TWTR:2, TXR:4, UGP:1, UN:2, URBN:2, YELP:2, YZCA:2
+    TTM:1, TV:3, TWTR:2, TXR:4, UGP:1, UN:2, URBN:2, YELP:2, YZCA:2,
+    // Acciones argentinas (ratio 1, precios en ARS)
+    'YPF.BA':1, 'GGAL.BA':1, 'PAMP.BA':1, 'COME.BA':1, 'TXAR.BA':1, 'ALUA.BA':1, 'BMA.BA':1, 'BBAR.BA':1
 };
 
 const defaultCedears = Object.keys(BYMA_RATIOS);
@@ -760,10 +789,30 @@ function renderCapitalView() {
     const capitalBTC = btcHoldings;
     const capitalBTCUSD = capitalBTC * currentBTCPriceUSD;
     const capitalBTCARS = capitalBTC * currentBTCPriceARS;
-
     document.getElementById('capitalBTC').innerHTML = `${capitalBTC.toFixed(8)} BTC`;
     document.getElementById('capitalBTCUSD').innerHTML = formatCurrencyUSD(capitalBTCUSD);
     document.getElementById('capitalBTCARS').innerHTML = formatCurrency(capitalBTCARS);
+
+    const capitalSOL = solHoldings;
+    const capitalSOLUSD = capitalSOL * currentSOLPriceUSD;
+    const capitalSOLARS = capitalSOL * currentSOLPriceARS;
+    document.getElementById('capitalSOL').innerHTML = `${capitalSOL.toFixed(8)} SOL`;
+    document.getElementById('capitalSOLUSD').innerHTML = formatCurrencyUSD(capitalSOLUSD);
+    document.getElementById('capitalSOLARS').innerHTML = formatCurrency(capitalSOLARS);
+
+    const capitalBNB = bnbHoldings;
+    const capitalBNBUSD = capitalBNB * currentBNBPriceUSD;
+    const capitalBNBARS = capitalBNB * currentBNBPriceARS;
+    document.getElementById('capitalBNB').innerHTML = `${capitalBNB.toFixed(8)} BNB`;
+    document.getElementById('capitalBNBUSD').innerHTML = formatCurrencyUSD(capitalBNBUSD);
+    document.getElementById('capitalBNBARS').innerHTML = formatCurrency(capitalBNBARS);
+
+    const capitalNEXO = nexoHoldings;
+    const capitalNEXOUSD = capitalNEXO * currentNEXOPriceUSD;
+    const capitalNEXOARS = capitalNEXO * currentNEXOPriceARS;
+    document.getElementById('capitalNEXO').innerHTML = `${capitalNEXO.toFixed(8)} NEXO`;
+    document.getElementById('capitalNEXOUSD').innerHTML = formatCurrencyUSD(capitalNEXOUSD);
+    document.getElementById('capitalNEXOARS').innerHTML = formatCurrency(capitalNEXOARS);
 
     // Billeteras
     const activeFilter = document.getElementById('capitalFilter')?.value || 'all';
@@ -781,8 +830,8 @@ function renderCapitalView() {
     // CEDEARs
     let totalCedearUSD = 0;
     let totalCedearARS = 0;
-    const userCedears = Object.keys(cedearHoldings).filter(t => cedearHoldings[t] > 0);
-    const cedearCards = userCedears.map(ticker => {
+    const cedearData = [];
+    Object.keys(cedearHoldings).filter(t => cedearHoldings[t] > 0).forEach(ticker => {
         const amount = cedearHoldings[ticker] || 0;
         const priceUSD = cedearPrices[ticker] || 0;
         const ratio = BYMA_RATIOS[ticker] || 1;
@@ -792,22 +841,35 @@ function renderCapitalView() {
         const valueARS = amount * cedearPriceARS;
         totalCedearUSD += valueUSD;
         totalCedearARS += valueARS;
+        cedearData.push({ ticker, amount, valueUSD, valueARS, percent: totalCedearARS > 0 ? (valueARS / totalCedearARS) * 100 : 0 });
+    });
+
+    // Ordenar
+    if (cedearSortBy === 'value') {
+        cedearData.sort((a, b) => b.valueARS - a.valueARS);
+    } else if (cedearSortBy === 'percent') {
+        cedearData.sort((a, b) => b.percent - a.percent);
+    }
+
+    const cedearCards = cedearData.map(item => {
+        const { ticker, amount, valueUSD, valueARS } = item;
+        const imageUrl = cedearImages[ticker] || '';
         return `
-            <div class="cedear-card" style="padding:12px; background:#f1f5f9; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                <div style="flex:1;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span><strong>${ticker}</strong> <span style="font-size:0.75rem; color:#64748b;">(ratio ${ratio}:1)</span></span>
-                        <span style="font-size:0.85rem;">${amount.toFixed(2)} unidades</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; font-size:0.82rem; color:#64748b; margin-top:4px;">
-                        <span>Precio: ${formatCurrencyUSD(cedearPriceUSD)} | ${formatCurrency(cedearPriceARS)}</span>
-                        <span>Total: ${formatCurrencyUSD(valueUSD)} | ${formatCurrency(valueARS)}</span>
+            <div class="cedear-card" style="padding:10px; background:#f1f5f9; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                    ${imageUrl ? `<img src="${imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;">` : '<div style="width:40px;height:40px;background:#ccc;border-radius:8px;"></div>'}
+                    <div style="flex:1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span><strong>${ticker}</strong></span>
+                            <span>${amount.toFixed(2)} unidades</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #64748b; margin-top:4px;">
+                            <span>${formatCurrencyUSD(valueUSD)}</span>
+                            <span>${formatCurrency(valueARS)}</span>
+                        </div>
                     </div>
                 </div>
-                <div style="display:flex; gap:6px;">
-                    <button class="btn-edit" onclick="editCedear('${ticker}')"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="btn-delete" onclick="deleteCedearHandler('${ticker}')"><i class="fas fa-trash-alt"></i></button>
-                </div>
+                <button class="btn-edit" onclick="editCedear('${ticker}')"><i class="fas fa-pencil-alt"></i></button>
             </div>
         `;
     }).join('');
@@ -817,17 +879,23 @@ function renderCapitalView() {
     document.getElementById('totalCedearARS').innerHTML = formatCurrency(totalCedearARS);
 
     // Totales generales
-    const totalUSD = capitalBTCUSD + (totalBilleterasARS / dolarMEP) + totalCedearUSD;
-    const totalARS = capitalBTCARS + totalBilleterasARS + totalCedearARS;
+    const totalUSD = capitalBTCUSD + capitalSOLUSD + capitalBNBUSD + capitalNEXOUSD + (totalBilleterasARS / dolarMEP) + totalCedearUSD;
+    const totalARS = capitalBTCARS + capitalSOLARS + capitalBNBARS + capitalNEXOARS + totalBilleterasARS + totalCedearARS;
     document.getElementById('totalWealth').innerHTML = formatCurrency(totalARS);
     document.getElementById('totalWealthUSD').innerHTML = formatCurrencyUSD(totalUSD);
 
     // Filtros de visibilidad
     const btcSection = document.getElementById('capitalBTCSection');
+    const solSection = document.getElementById('capitalSOLSection');
+    const bnbSection = document.getElementById('capitalBNBSection');
+    const nexoSection = document.getElementById('capitalNEXOSection');
     const billeterasSection = document.getElementById('capitalBilleterasSection');
     const cedearSection = document.getElementById('capitalCedearSection');
 
     if (btcSection) btcSection.style.display = (activeFilter === 'all' || activeFilter === 'btc') ? '' : 'none';
+    if (solSection) solSection.style.display = (activeFilter === 'all' || activeFilter === 'sol') ? '' : 'none';
+    if (bnbSection) bnbSection.style.display = (activeFilter === 'all' || activeFilter === 'bnb') ? '' : 'none';
+    if (nexoSection) nexoSection.style.display = (activeFilter === 'all' || activeFilter === 'nexo') ? '' : 'none';
     if (billeterasSection) billeterasSection.style.display = (activeFilter === 'all' || activeFilter === 'billeteras') ? '' : 'none';
     if (cedearSection) cedearSection.style.display = (activeFilter === 'all' || activeFilter === 'cedears') ? '' : 'none';
 }
@@ -1753,6 +1821,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('generateExpenseReportBtn')?.addEventListener('click', () => renderExpenseReport());
     document.getElementById('sortPercentAsc')?.addEventListener('click', () => sortExpensePercent('asc'));
     document.getElementById('sortPercentDesc')?.addEventListener('click', () => sortExpensePercent('desc'));
+    document.getElementById('sortCedearsValue')?.addEventListener('click', () => { cedearSortBy = 'value'; renderCapitalView(); });
+    document.getElementById('sortCedearsPercent')?.addEventListener('click', () => { cedearSortBy = 'percent'; renderCapitalView(); });
     document.getElementById('clearFilters')?.addEventListener('click', () => {
         const filterType = document.getElementById('filterType');
         const filterAccount = document.getElementById('filterAccount');
