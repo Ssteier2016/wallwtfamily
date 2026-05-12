@@ -2,7 +2,7 @@
 // IMPORTS DE FIREBASE (MÓDULO ES6)
 // ============================================
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ============================================
@@ -29,6 +29,29 @@ try {
     db = getFirestore(app);
     firebaseEnabled = true;
     setPersistence(auth, browserLocalPersistence);
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            syncEnabled = true;
+            const userNameSpan = document.getElementById('userName');
+            const loginBtn = document.getElementById('loginGoogleBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (userNameSpan) userNameSpan.innerText = user.displayName || user.email;
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = 'flex';
+        } else {
+            currentUser = null;
+            syncEnabled = false;
+            const userNameSpan = document.getElementById('userName');
+            const loginBtn = document.getElementById('loginGoogleBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (userNameSpan) userNameSpan.innerText = '';
+            if (loginBtn) loginBtn.style.display = 'flex';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+        }
+    });
+
     console.log("Firebase inicializado correctamente");
 } catch (e) {
     console.warn("Firebase no disponible. Modo local.", e);
@@ -50,6 +73,7 @@ let nexoHoldings = 0;
 let nexoHistory = [];
 let cedearHoldings = {};
 let cedearPrices = {};
+let cedearCustomImages = {};
 let cedearUSDExchange = 1;
 let cedearSortBy = 'none'; // 'value', 'percent', 'none'
 const cedearImages = {
@@ -163,6 +187,7 @@ function initializeData() {
         const savedNexoHistory = localStorage.getItem('finanzas_nexo_history');
         const savedCedears = localStorage.getItem('finanzas_cedear_holdings');
         const savedCedearPrices = localStorage.getItem('finanzas_cedear_prices');
+        const savedCedearImages = localStorage.getItem('finanzas_cedear_custom_images');
 
         transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
         accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
@@ -179,6 +204,7 @@ function initializeData() {
           nexoHistory = savedNexoHistory ? JSON.parse(savedNexoHistory) : [];
           cedearHoldings = savedCedears ? JSON.parse(savedCedears) : {};
           cedearPrices = savedCedearPrices ? JSON.parse(savedCedearPrices) : {};
+          cedearCustomImages = savedCedearImages ? JSON.parse(savedCedearImages) : {};
 
         if (!Array.isArray(transactions)) transactions = [];
         if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
@@ -230,6 +256,7 @@ function saveToLocalStorage() {
     localStorage.setItem('finanzas_nexo_history', JSON.stringify(nexoHistory));
     localStorage.setItem('finanzas_cedear_holdings', JSON.stringify(cedearHoldings));
     localStorage.setItem('finanzas_cedear_prices', JSON.stringify(cedearPrices));
+    localStorage.setItem('finanzas_cedear_custom_images', JSON.stringify(cedearCustomImages));
 }
 
 function recalculateAllBalances() {
@@ -563,9 +590,22 @@ let currentBTCPriceUSD = 0, currentBTCPriceARS = 0;
 let currentSOLPriceUSD = 0, currentSOLPriceARS = 0;
 let currentBNBPriceUSD = 0, currentBNBPriceARS = 0;
 let currentNEXOPriceUSD = 0, currentNEXOPriceARS = 0;
+let prevBTCPriceUSD = 0, prevSOLPriceUSD = 0, prevBNBPriceUSD = 0, prevNEXOPriceUSD = 0;
+let priceLastUpdateDate = '';
 
 async function updateBTCPrice() {
     try {
+        const today = new Date().toISOString().split('T')[0];
+
+        // Si es un nuevo día, guarda los precios anteriores
+        if (priceLastUpdateDate !== today) {
+            prevBTCPriceUSD = currentBTCPriceUSD;
+            prevSOLPriceUSD = currentSOLPriceUSD;
+            prevBNBPriceUSD = currentBNBPriceUSD;
+            prevNEXOPriceUSD = currentNEXOPriceUSD;
+            priceLastUpdateDate = today;
+        }
+
         const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,solana,binancecoin,nexo&vs_currencies=usd,ars');
         const data = await res.json();
         currentBTCPriceUSD = data.bitcoin?.usd || 0;
@@ -583,7 +623,7 @@ async function updateBTCPrice() {
         const totalBTCelem = document.getElementById('totalBTC');
         const btcValueUSDelem = document.getElementById('btcValueUSD');
         const btcValueARSelem = document.getElementById('btcValueARS');
-        if (btcPriceUSDElem) btcPriceUSDElem.innerHTML = `$${currentBTCPriceUSD.toLocaleString()}`;
+        if (btcPriceUSDElem) btcPriceUSDElem.innerHTML = `<div>$${currentBTCPriceUSD.toLocaleString()}</div>${formatPriceVariation(currentBTCPriceUSD, prevBTCPriceUSD)}`;
         if (btcPriceARSElem) btcPriceARSElem.innerHTML = `$${currentBTCPriceARS.toLocaleString()}`;
         if (totalBTCelem) totalBTCelem.innerHTML = btcHoldings.toFixed(8);
         if (btcValueUSDelem) btcValueUSDelem.innerHTML = formatCurrencyUSD(btcHoldings * currentBTCPriceUSD);
@@ -594,7 +634,7 @@ async function updateBTCPrice() {
         const totalSOLelem = document.getElementById('totalSOL');
         const solValueUSDelem = document.getElementById('solValueUSD');
         const solValueARSelem = document.getElementById('solValueARS');
-        if (solPriceUSDElem) solPriceUSDElem.innerHTML = `$${currentSOLPriceUSD.toLocaleString()}`;
+        if (solPriceUSDElem) solPriceUSDElem.innerHTML = `<div>$${currentSOLPriceUSD.toLocaleString()}</div>${formatPriceVariation(currentSOLPriceUSD, prevSOLPriceUSD)}`;
         if (solPriceARSElem) solPriceARSElem.innerHTML = `$${currentSOLPriceARS.toLocaleString()}`;
         if (totalSOLelem) totalSOLelem.innerHTML = solHoldings.toFixed(8);
         if (solValueUSDelem) solValueUSDelem.innerHTML = formatCurrencyUSD(solHoldings * currentSOLPriceUSD);
@@ -605,7 +645,7 @@ async function updateBTCPrice() {
         const totalBNBelem = document.getElementById('totalBNB');
         const bnbValueUSDelem = document.getElementById('bnbValueUSD');
         const bnbValueARSelem = document.getElementById('bnbValueARS');
-        if (bnbPriceUSDElem) bnbPriceUSDElem.innerHTML = `$${currentBNBPriceUSD.toLocaleString()}`;
+        if (bnbPriceUSDElem) bnbPriceUSDElem.innerHTML = `<div>$${currentBNBPriceUSD.toLocaleString()}</div>${formatPriceVariation(currentBNBPriceUSD, prevBNBPriceUSD)}`;
         if (bnbPriceARSElem) bnbPriceARSElem.innerHTML = `$${currentBNBPriceARS.toLocaleString()}`;
         if (totalBNBelem) totalBNBelem.innerHTML = bnbHoldings.toFixed(8);
         if (bnbValueUSDelem) bnbValueUSDelem.innerHTML = formatCurrencyUSD(bnbHoldings * currentBNBPriceUSD);
@@ -616,7 +656,7 @@ async function updateBTCPrice() {
         const totalNEXOelem = document.getElementById('totalNEXO');
         const nexoValueUSDelem = document.getElementById('nexoValueUSD');
         const nexoValueARSelem = document.getElementById('nexoValueARS');
-        if (nexoPriceUSDElem) nexoPriceUSDElem.innerHTML = `$${currentNEXOPriceUSD.toLocaleString()}`;
+        if (nexoPriceUSDElem) nexoPriceUSDElem.innerHTML = `<div>$${currentNEXOPriceUSD.toLocaleString()}</div>${formatPriceVariation(currentNEXOPriceUSD, prevNEXOPriceUSD)}`;
         if (nexoPriceARSElem) nexoPriceARSElem.innerHTML = `$${currentNEXOPriceARS.toLocaleString()}`;
         if (totalNEXOelem) totalNEXOelem.innerHTML = nexoHoldings.toFixed(8);
         if (nexoValueUSDelem) nexoValueUSDelem.innerHTML = formatCurrencyUSD(nexoHoldings * currentNEXOPriceUSD);
@@ -1356,7 +1396,7 @@ function renderCapitalView() {
 
     const cedearCards = cedearData.map(item => {
         const { ticker, amount, valueUSD, valueARS } = item;
-        const imageUrl = cedearImages[ticker] || '';
+        const imageUrl = cedearCustomImages[ticker] || cedearImages[ticker] || '';
         return `
             <div class="cedear-card" style="padding:10px; background:#f1f5f9; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
                 <div style="display:flex; align-items:center; gap:10px; flex:1;">
@@ -1551,6 +1591,27 @@ function updateBalanceChart() {
         data: { labels, datasets: [{ label: 'Saldo', data: balances, backgroundColor: colors, borderRadius: 8 }] },
         options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: (value) => formatCurrency(value) } } } }
     });
+    updateWalletDetails();
+}
+
+function updateWalletDetails() {
+    const tbody = document.getElementById('walletDetailsBody');
+    if (!tbody) return;
+    const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+    if (totalBalance === 0 || accounts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No hay billeteras</td></tr>';
+        return;
+    }
+    tbody.innerHTML = accounts.map(acc => {
+        const percentage = ((acc.balance / totalBalance) * 100).toFixed(1);
+        return `
+            <tr>
+                <td>${escapeHtml(acc.name)}</td>
+                <td>${formatCurrency(acc.balance)}</td>
+                <td>${percentage}%</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // ========== RENDERIZADO DE LISTAS ==========
@@ -2052,6 +2113,14 @@ function formatCurrency(value) {
 }
 function formatDate(dateString) { const d = new Date(dateString); return d.toLocaleDateString('es-AR'); }
 function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+function formatPriceVariation(currentPrice, prevPrice) {
+    if (!prevPrice || prevPrice === 0) return '';
+    const change = currentPrice - prevPrice;
+    const percent = (change / prevPrice * 100).toFixed(2);
+    const icon = change >= 0 ? '📈' : '📉';
+    const color = change >= 0 ? '#10b981' : '#ef4444';
+    return `<div style="font-size:0.75rem; color:${color}; margin-top:4px;">${icon} ${change >= 0 ? '+' : ''}${percent}%</div>`;
+}
 function showToast(msg, type='success') { const toast = document.getElementById('toast'); if (toast) { toast.textContent = msg; toast.style.background = type === 'success' ? '#10b981' : '#ef4444'; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); } }
 
 function updateFilters() {
@@ -2204,6 +2273,7 @@ window.editCedear = (ticker) => {
     document.getElementById('cedearTicker').value = ticker;
     document.getElementById('cedearAmount').value = cedearHoldings[ticker] || 0;
     document.getElementById('cedearPrice').value = cedearPrices[ticker] || '';
+    document.getElementById('cedearImageUrl').value = cedearCustomImages[ticker] || '';
     document.getElementById('cedearType').value = 'cedear'; // nuevo campo
     updateCedearSelectOptions();
     openModal('cedearModal');
@@ -2435,6 +2505,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ticker = document.getElementById('cedearSelect').value;
     const amount = parseFloat(document.getElementById('cedearAmount').value);
     const manualPrice = parseFloat(document.getElementById('cedearPrice').value);
+    const imageUrl = document.getElementById('cedearImageUrl').value;
     const cedearType = document.getElementById('cedearType').value;
 
     if (!ticker) { showToast("Selecciona un CEDEAR", "error"); return; }
@@ -2449,6 +2520,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await fetchCedearPrice(ticker);
     }
 
+    if (imageUrl) cedearCustomImages[ticker] = imageUrl;
     addOrUpdateCedear(ticker, amount);
     closeModal();
 });

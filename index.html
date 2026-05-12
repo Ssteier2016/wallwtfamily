@@ -75,6 +75,15 @@
                 <div class="charts-row">
                     <div class="chart-container"><h3>Balance por Billetera</h3><canvas id="balanceChart"></canvas></div>
                 </div>
+                <div class="chart-container" style="margin-bottom: 20px;">
+                    <h3>Detalles de Balance por Billetera</h3>
+                    <div class="transactions-table-container">
+                        <table class="transactions-table">
+                            <thead><tr><th>Billetera</th><th>Balance</th><th>Porcentaje</th></tr></thead>
+                            <tbody id="walletDetailsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
                 <div class="recent-transactions"><div class="section-header"><h3>Transacciones Recientes</h3><a href="#" class="view-all" data-view="transactions">Ver todas →</a></div><div class="transactions-list" id="recentTransactionsList"></div></div>
             </div>
 
@@ -549,6 +558,10 @@
             <div class="form-group">
                 <label>Precio USD (opcional — si no se completa, se busca automáticamente)</label>
                 <input type="number" id="cedearPrice" step="0.01" placeholder="Se obtiene de Alpha Vantage">
+            </div>
+            <div class="form-group">
+                <label>Imagen URL (opcional)</label>
+                <input type="url" id="cedearImageUrl" placeholder="https://ejemplo.com/imagen.png">
             </div>
             <div style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">
                 💡 El precio en ARS se calcula: (Precio USD ÷ Ratio) × Dólar MEP
