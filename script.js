@@ -76,6 +76,7 @@ let cedearPrices = {};
 let cedearCustomImages = {};
 let cedearUSDExchange = 1;
 let cedearSortBy = 'none'; // 'value', 'percent', 'none'
+let expenseChartPeriod = 'monthly'; // 'daily', 'weekly', 'monthly'
 const cedearImages = {
     'TSLA': 'https://logo.clearbit.com/tesla.com',
     'MSFT': 'https://logo.clearbit.com/microsoft.com',
@@ -103,6 +104,8 @@ const cedearImages = {
     'BBAR.BA': 'https://logo.clearbit.com/bbva.com.ar'
 };
 let dolarMEP = 1000; // fallback
+let dolarBlueCompra = 0;
+let dolarBlueVenta = 0;
 
 const ALPHA_VANTAGE_KEY = '1RW4YGC5ZFFQHGA6'; // ← reemplazá con tu key
 
@@ -704,12 +707,21 @@ async function updateDolarMEP() {
     try {
         const res = await fetch('https://api.bluelytics.com.ar/v2/latest');
         const data = await res.json();
-        dolarMEP = data.oficial.value_sell; // usa oficial como aproximación MEP
-        // Si querés MEP real podés usar otra API
-        console.log('Dólar MEP:', dolarMEP);
+        dolarMEP = data.oficial.value_sell;
+        dolarBlueCompra = data.blue?.value_buy || 0;
+        dolarBlueVenta = data.blue?.value_sell || 0;
+        console.log('Dólar MEP:', dolarMEP, 'Blue Compra:', dolarBlueCompra, 'Blue Venta:', dolarBlueVenta);
+        renderDashboardDolar();
     } catch(e) {
-        console.warn('No se pudo obtener dólar MEP, usando fallback:', dolarMEP);
+        console.warn('No se pudo obtener dólar, usando fallback:', dolarMEP);
     }
+}
+
+function renderDashboardDolar() {
+    const compraElem = document.getElementById('dolarBlueCompra');
+    const ventaElem = document.getElementById('dolarBlueVenta');
+    if (compraElem) compraElem.innerText = `$${dolarBlueCompra.toFixed(2)}`;
+    if (ventaElem) ventaElem.innerText = `$${dolarBlueVenta.toFixed(2)}`;
 }
 
 // ========== PRECIO CEDEAR via Alpha Vantage ==========
@@ -1882,17 +1894,79 @@ function showDailyTransactions(date) {
 // ========== REPORTE DE GASTOS con filtro y presupuesto ==========
 let currentExpensePercentData = [];
 
+function getWeekNumber(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+}
+
 function renderExpenseReport() {
     const reportType = document.getElementById('expenseReportType')?.value || 'category';
     const month = document.getElementById('expenseReportMonth')?.value;
+    const day = document.getElementById('expenseReportDay')?.value;
     const accountFilter = document.getElementById('expenseAccountFilter')?.value || 'all';
-    
+
     let filtered = Array.isArray(transactions) ? [...transactions] : [];
     if (month) filtered = filtered.filter(t => t.date.slice(0,7) === month);
+    if (day) filtered = filtered.filter(t => t.date === day);
     if (accountFilter && accountFilter !== 'all') filtered = filtered.filter(t => t.accId === accountFilter);
     const gastos = filtered.filter(t => t.type === 'gasto');
-    
-    if (reportType === 'category') {
+
+    // Manejar vistas por período (daily, weekly, monthly)
+    if (expenseChartPeriod === 'daily') {
+        const dailyData = {};
+        gastos.forEach(t => {
+            const dateKey = t.date;
+            dailyData[dateKey] = (dailyData[dateKey] || 0) + parseFloat(t.amount);
+        });
+        const labels = Object.keys(dailyData).sort();
+        const data = labels.map(d => dailyData[d]);
+        const ctx = document.getElementById('expenseReportChart')?.getContext('2d');
+        if (ctx) {
+            if (window.expenseChartInstance) window.expenseChartInstance.destroy();
+            window.expenseChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels.map(d => new Date(d).toLocaleDateString('es-AR')), datasets: [{ label: 'Gastos Diarios', data, backgroundColor: '#ef4444', borderRadius: 4 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: (v) => formatCurrency(v) } } } }
+            });
+        }
+        let html = '<table class="transactions-table"><thead><tr><th>Fecha</th><th>Total Gastos</th></tr></thead><tbody>';
+        labels.forEach(label => {
+            html += `<tr><td>${formatDate(label)}</td><td>${formatCurrency(dailyData[label])}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('expenseReportDetails').innerHTML = html;
+        const percentBody = document.getElementById('expensePercentBody');
+        if (percentBody) percentBody.innerHTML = '<tr><td colspan="5">Vista Diaria - no aplica análisis por categoría</td></tr>';
+    } else if (expenseChartPeriod === 'weekly') {
+        const weeklyData = {};
+        gastos.forEach(t => {
+            const weekNum = getWeekNumber(t.date);
+            const year = new Date(t.date).getFullYear();
+            const weekKey = `${year}-W${weekNum}`;
+            weeklyData[weekKey] = (weeklyData[weekKey] || 0) + parseFloat(t.amount);
+        });
+        const labels = Object.keys(weeklyData).sort();
+        const data = labels.map(w => weeklyData[w]);
+        const ctx = document.getElementById('expenseReportChart')?.getContext('2d');
+        if (ctx) {
+            if (window.expenseChartInstance) window.expenseChartInstance.destroy();
+            window.expenseChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Gastos Semanales', data, backgroundColor: '#f59e0b', borderRadius: 4 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: (v) => formatCurrency(v) } } } }
+            });
+        }
+        let html = '<table class="transactions-table"><thead><tr><th>Semana</th><th>Total Gastos</th></tr></thead><tbody>';
+        labels.forEach(label => {
+            html += `<tr><td>${label}</td><td>${formatCurrency(weeklyData[label])}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('expenseReportDetails').innerHTML = html;
+        const percentBody = document.getElementById('expensePercentBody');
+        if (percentBody) percentBody.innerHTML = '<tr><td colspan="5">Vista Semanal - no aplica análisis por categoría</td></tr>';
+    } else if (reportType === 'category') {
         const byCat = {};
         gastos.forEach(t => {
             const catName = getCategoryName(t.catId);
@@ -1903,7 +1977,16 @@ function renderExpenseReport() {
         const total = data.reduce((a,b)=>a+b,0);
         const currentMonth = month || new Date().toISOString().slice(0,7);
         const monthlyBudgets = budgets.filter(b => b.month === currentMonth);
-        
+
+        // Obtener saldo de la billetera seleccionada para calcular porcentaje
+        let walletBalance = 0;
+        if (accountFilter && accountFilter !== 'all') {
+            const selectedAccount = accounts.find(a => a.id === accountFilter);
+            walletBalance = selectedAccount ? selectedAccount.balance : 0;
+        } else {
+            walletBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
+        }
+
         currentExpensePercentData = labels.map((label, idx) => {
             const cat = categories.find(c => c.name === label);
             const budget = monthlyBudgets.find(b => b.categoryId === cat?.id);
@@ -1913,7 +1996,7 @@ function renderExpenseReport() {
             return {
                 category: label,
                 amount: spent,
-                percentage: total > 0 ? (spent / total) * 100 : 0,
+                percentage: walletBalance > 0 ? (spent / walletBalance) * 100 : 0,
                 budget: budgetAmount,
                 withinBudget: within
             };
@@ -2398,6 +2481,9 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal('cedearModal');
     });
     document.getElementById('generateExpenseReportBtn')?.addEventListener('click', () => renderExpenseReport());
+    document.getElementById('expenseBtnDaily')?.addEventListener('click', () => { expenseChartPeriod = 'daily'; renderExpenseReport(); });
+    document.getElementById('expenseBtnWeekly')?.addEventListener('click', () => { expenseChartPeriod = 'weekly'; renderExpenseReport(); });
+    document.getElementById('expenseBtnMonthly')?.addEventListener('click', () => { expenseChartPeriod = 'monthly'; renderExpenseReport(); });
     document.getElementById('sortPercentAsc')?.addEventListener('click', () => sortExpensePercent('asc'));
     document.getElementById('sortPercentDesc')?.addEventListener('click', () => sortExpensePercent('desc'));
     document.getElementById('sortCedearsValue')?.addEventListener('click', () => { cedearSortBy = 'value'; renderCapitalView(); });

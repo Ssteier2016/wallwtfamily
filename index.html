@@ -68,6 +68,10 @@
                     <div class="card income-card"><div class="card-icon"><i class="fas fa-arrow-down"></i></div><div class="card-content"><span class="card-label">Ingresos</span><span class="card-value" id="totalIncome">$0.00</span></div></div>
                     <div class="card expense-card"><div class="card-icon"><i class="fas fa-arrow-up"></i></div><div class="card-content"><span class="card-label">Gastos</span><span class="card-value" id="totalExpense">$0.00</span></div></div>
                 </div>
+                <div class="summary-cards">
+                    <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"><div class="card-icon" style="background:transparent; color:white;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label" style="color:white;">Dólar Blue - Compra</span><span class="card-value" id="dolarBlueCompra" style="color:white;">$0.00</span></div></div>
+                    <div class="card" style="background: linear-gradient(135deg, #764ba2 0%, #f093fb 100%);"><div class="card-icon" style="background:transparent; color:white;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label" style="color:white;">Dólar Blue - Venta</span><span class="card-value" id="dolarBlueVenta" style="color:white;">$0.00</span></div></div>
+                </div>
                 <div class="charts-row" style="grid-template-columns: repeat(2, 1fr);">
                     <div class="chart-container"><h3>Gastos por Categoría</h3><canvas id="expenseChart"></canvas></div>
                     <div class="chart-container"><h3>Ingresos por Categoría</h3><canvas id="incomeChart"></canvas></div>
@@ -371,8 +375,14 @@
                         <select id="expenseAccountFilter" class="filter-select">
                             <option value="all">Todas las billeteras</option>
                         </select>
-                        <input type="month" id="expenseReportMonth" class="filter-date">
+                        <input type="month" id="expenseReportMonth" class="filter-date" placeholder="Mes">
+                        <input type="date" id="expenseReportDay" class="filter-date" placeholder="Día">
                         <button class="btn-primary" id="generateExpenseReportBtn">Generar</button>
+                    </div>
+                    <div style="display:flex; gap:5px; margin-top:10px;">
+                        <button class="btn-secondary" id="expenseBtnDaily" style="font-size:0.85rem; padding:6px 12px;">📅 Diario</button>
+                        <button class="btn-secondary" id="expenseBtnWeekly" style="font-size:0.85rem; padding:6px 12px;">📊 Semanal</button>
+                        <button class="btn-secondary" id="expenseBtnMonthly" style="font-size:0.85rem; padding:6px 12px; background:#3b82f6; color:white;">📈 Mensual</button>
                     </div>
                 </div>
                 <div class="report-container"><canvas id="expenseReportChart"></canvas></div>
