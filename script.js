@@ -1854,13 +1854,13 @@ function renderCalendar() {
         const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         const dayTrans = Array.isArray(transactions) ? transactions.filter(t => t.date.split('T')[0] === dateStr) : [];
         let totalInc=0, totalExp=0;
-        dayTrans.forEach(t => { if(t.type==='ingreso') totalInc += t.amount; else totalExp += t.amount; });
-        const balance = totalInc - totalExp;
-        let indicatorClass = '';
-        if (totalExp > 0) indicatorClass = 'red';
-        else if (totalInc > 0) indicatorClass = 'green';
-        if (balance !== 0 && totalExp===0 && totalInc===0) indicatorClass = 'orange';
-        html += `<div class="calendar-day" data-date="${dateStr}"><div class="day-number">${d}</div><div class="day-indicator ${indicatorClass}"></div></div>`;
+        dayTrans.forEach(t => { if(t.type==='ingreso') totalInc += parseFloat(t.amount); else totalExp += parseFloat(t.amount); });
+
+        let dayContent = `<div class="day-number">${d}</div>`;
+        if (totalExp > 0) dayContent += `<div style="font-size:0.7rem; color:#ef4444; font-weight:600;">-${(totalExp).toLocaleString('es-AR', {maximumFractionDigits:0})}</div>`;
+        if (totalInc > 0) dayContent += `<div style="font-size:0.7rem; color:#10b981; font-weight:600;">+${(totalInc).toLocaleString('es-AR', {maximumFractionDigits:0})}</div>`;
+
+        html += `<div class="calendar-day" data-date="${dateStr}" style="padding:4px;">${dayContent}</div>`;
     }
     grid.innerHTML = html;
     document.getElementById('calendarMonthYear').innerText = firstDay.toLocaleDateString('es', { month:'long', year:'numeric' });
