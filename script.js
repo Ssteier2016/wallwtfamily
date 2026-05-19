@@ -488,7 +488,8 @@ function addCategory(category) {
         id: 'cat-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
         name: category.name,
         color: category.color || '#10b981',
-        imageUrl: category.imageUrl || ''
+        imageUrl: category.imageUrl || '',
+        parentId: category.parentId || null,
     };
     categories.push(newCategory);
     saveToLocalStorage();
@@ -512,6 +513,10 @@ function updateCategory(id, updatedData) {
 function deleteCategory(id) {
     if (transactions.some(t => t.catId === id)) {
         showToast('No se puede eliminar: tiene transacciones', 'error');
+        return false;
+    }
+    if (categories.some(c => c.parentId === id)) {
+        showToast('No se puede eliminar: tiene subcategorías. Eliminá las subcategorías primero.', 'error');
         return false;
     }
     categories = categories.filter(c => c.id !== id);
@@ -1310,7 +1315,15 @@ window.deleteNexoMovementHandler = (id) => {
 
 // ========== GETTERS ==========
 function getAccountName(id) { const a = accounts.find(a => a.id === id); return a ? a.name : 'Desconocido'; }
-function getCategoryName(id) { const c = categories.find(c => c.id === id); return c ? c.name : 'Sin categoría'; }
+function getCategoryName(id) {
+    const c = categories.find(c => c.id === id);
+    if (!c) return 'Sin categoría';
+    if (c.parentId) {
+        const parent = categories.find(p => p.id === c.parentId);
+        return parent ? `${parent.name} › ${c.name}` : c.name;
+    }
+    return c.name;
+}
 function getCategoryColor(id) { const c = categories.find(c => c.id === id); return c ? c.color : '#94a3b8'; }
 function getCategoryImage(id) { const c = categories.find(c => c.id === id); return c ? (c.imageUrl || '') : ''; }
 
@@ -1688,18 +1701,69 @@ function renderCategoriesList() {
     const container = document.getElementById('categoriesList');
     if (!container) return;
     if (!Array.isArray(categories) || categories.length === 0) { container.innerHTML = '<div class="empty-state">No hay categorías. Crea una nueva.</div>'; return; }
-    container.innerHTML = categories.map(cat => `
-        <div class="category-card">
-            <div class="category-info" style="display:flex; align-items:center; gap:12px;">
-                ${cat.imageUrl ? `<img src="${cat.imageUrl}" class="category-img" style="width:48px;height:48px;object-fit:cover;border-radius:12px;">` : `<div class="category-color" style="background: ${cat.color}; width:48px;height:48px;border-radius:12px;"></div>`}
-                <div><strong>${escapeHtml(cat.name)}</strong><br><span style="font-size:0.75rem; color:#64748b;">${cat.color}</span></div>
+
+    const parents = categories.filter(c => !c.parentId);
+
+    function catIcon(cat, size = 48) {
+        return cat.imageUrl
+            ? `<img src="${cat.imageUrl}" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:${size/4}px;flex-shrink:0;">`
+            : `<div style="background:${cat.color};width:${size}px;height:${size}px;border-radius:${size/4}px;flex-shrink:0;"></div>`;
+    }
+
+    // Use flex column layout for grouped display
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.gap = '16px';
+
+    container.innerHTML = parents.map(cat => {
+        const subs = categories.filter(c => c.parentId === cat.id);
+        const subsBadge = subs.length ? `<span style="font-size:0.7rem;background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:20px;margin-left:8px;">${subs.length} sub</span>` : '';
+
+        const subsHtml = subs.map(sub => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:12px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    ${catIcon(sub, 36)}
+                    <div>
+                        <strong style="font-size:0.875rem;">${escapeHtml(sub.name)}</strong>
+                        <div style="font-size:0.7rem;color:#94a3b8;">subcategoría de ${escapeHtml(cat.name)}</div>
+                    </div>
+                </div>
+                <div class="account-actions">
+                    <button class="btn-edit" onclick="editCategory('${sub.id}')"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn-delete" onclick="deleteCategoryHandler('${sub.id}')"><i class="fas fa-trash-alt"></i></button>
+                </div>
             </div>
-            <div class="account-actions">
-                <button class="btn-edit" onclick="editCategory('${cat.id}')"><i class="fas fa-pencil-alt"></i></button>
-                <button class="btn-delete" onclick="deleteCategoryHandler('${cat.id}')"><i class="fas fa-trash-alt"></i></button>
+        `).join('');
+
+        return `
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;">
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        ${catIcon(cat, 48)}
+                        <div>
+                            <div style="display:flex;align-items:center;">
+                                <strong>${escapeHtml(cat.name)}</strong>${subsBadge}
+                            </div>
+                            <div style="font-size:0.75rem;color:#64748b;margin-top:2px;">${cat.color}</div>
+                        </div>
+                    </div>
+                    <div class="account-actions">
+                        <button class="btn-edit" onclick="editCategory('${cat.id}')"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="btn-delete" onclick="deleteCategoryHandler('${cat.id}')"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+                ${subs.length ? `
+                <div style="border-left:3px solid ${cat.color};margin:0 20px 12px 20px;padding-left:12px;display:flex;flex-direction:column;gap:8px;">
+                    ${subsHtml}
+                </div>` : ''}
+                <div style="padding:0 20px 14px;">
+                    <button class="btn-secondary" style="font-size:0.78rem;padding:5px 14px;" onclick="addSubcategory('${cat.id}')">
+                        <i class="fas fa-plus"></i> Agregar subcategoría
+                    </button>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function renderBudgetsList() {
@@ -2210,17 +2274,36 @@ function formatPriceVariation(currentPrice, prevPrice) {
 }
 function showToast(msg, type='success') { const toast = document.getElementById('toast'); if (toast) { toast.textContent = msg; toast.style.background = type === 'success' ? '#10b981' : '#ef4444'; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); } }
 
+function buildCategoryOptions(selectedVal, includeAll) {
+    const parents = categories.filter(c => !c.parentId);
+    let html = includeAll ? '<option value="all">Todas las categorías</option>' : '';
+    parents.forEach(p => {
+        const subs = categories.filter(c => c.parentId === p.id);
+        if (subs.length) {
+            html += `<optgroup label="${escapeHtml(p.name)}">`;
+            html += `<option value="${p.id}" ${selectedVal === p.id ? 'selected' : ''}>${escapeHtml(p.name)}</option>`;
+            subs.forEach(s => {
+                html += `<option value="${s.id}" ${selectedVal === s.id ? 'selected' : ''}>↳ ${escapeHtml(s.name)}</option>`;
+            });
+            html += '</optgroup>';
+        } else {
+            html += `<option value="${p.id}" ${selectedVal === p.id ? 'selected' : ''}>${escapeHtml(p.name)}</option>`;
+        }
+    });
+    return html;
+}
+
 function updateFilters() {
     const accSelect = document.getElementById('filterAccount');
     if (accSelect) { const val = accSelect.value; accSelect.innerHTML = '<option value="all">Todas las billeteras</option>' + accounts.map(a => `<option value="${a.id}" ${val===a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join(''); }
     const catSelect = document.getElementById('filterCategory');
-    if (catSelect) { const val = catSelect.value; catSelect.innerHTML = '<option value="all">Todas las categorías</option>' + categories.map(c => `<option value="${c.id}" ${val===c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join(''); }
+    if (catSelect) { const val = catSelect.value; catSelect.innerHTML = buildCategoryOptions(val, true); }
     const catFormSelect = document.getElementById('categoryId');
-    if (catFormSelect) { const val = catFormSelect.value; catFormSelect.innerHTML = categories.map(c => `<option value="${c.id}" ${val===c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join(''); }
+    if (catFormSelect) { const val = catFormSelect.value; catFormSelect.innerHTML = buildCategoryOptions(val, false); }
     const accFormSelect = document.getElementById('accId');
     if (accFormSelect) { const val = accFormSelect.value; accFormSelect.innerHTML = accounts.map(a => `<option value="${a.id}" ${val===a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join(''); }
     const budgetCatSelect = document.getElementById('budgetCategoryId');
-    if (budgetCatSelect) { budgetCatSelect.innerHTML = categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join(''); }
+    if (budgetCatSelect) { budgetCatSelect.innerHTML = buildCategoryOptions('', false); }
 }
 
 function updateBudgetMonthSelector() {
@@ -2324,25 +2407,42 @@ window.editAccount = (id) => {
     openModal('accountModal');
 };
 
-window.editCategory = (id) => {
+function openCategoryModal(id, presetParentId) {
     const modal = document.getElementById('categoryModal');
     if (!modal) return;
+
+    const parentSelect = document.getElementById('catParentId');
+    if (parentSelect) {
+        // Only top-level categories can be parents (no nested subcategories)
+        parentSelect.innerHTML = '<option value="">— Ninguna (categoría principal) —</option>' +
+            categories
+                .filter(c => !c.parentId && c.id !== id)
+                .map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
+                .join('');
+    }
+
     document.getElementById('categoryModalTitle').innerText = id ? 'Editar categoría' : 'Nueva categoría';
     document.getElementById('categoryId').value = id || '';
+
     if (id) {
         const cat = categories.find(c => c.id === id);
         if (cat) {
             document.getElementById('catName').value = cat.name;
             document.getElementById('catColor').value = cat.color;
             document.getElementById('catImageUrl').value = cat.imageUrl || '';
+            if (parentSelect) parentSelect.value = cat.parentId || '';
         }
     } else {
         document.getElementById('catName').value = '';
         document.getElementById('catColor').value = '#10b981';
         document.getElementById('catImageUrl').value = '';
+        if (parentSelect) parentSelect.value = presetParentId || '';
     }
     openModal('categoryModal');
-};
+}
+
+window.editCategory = (id) => openCategoryModal(id, null);
+window.addSubcategory = (parentId) => openCategoryModal(null, parentId);
 
 window.editGoal = (id) => {
     const goal = goals.find(g => g.id === id);
@@ -2443,7 +2543,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addTransactionBtn')?.addEventListener('click', () => window.editTransaction(null));
     document.getElementById('addTransactionBtn2')?.addEventListener('click', () => window.editTransaction(null));
     document.getElementById('addAccountBtn')?.addEventListener('click', () => window.editAccount(null));
-    document.getElementById('addCategoryBtn')?.addEventListener('click', () => window.editCategory(null));
+    document.getElementById('addCategoryBtn')?.addEventListener('click', () => openCategoryModal(null, null));
     document.getElementById('addBudgetBtn')?.addEventListener('click', () => {
         document.getElementById('budgetId').value = '';
         document.getElementById('budgetCategoryId').value = '';
@@ -2552,8 +2652,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = document.getElementById('catName').value;
         const color = document.getElementById('catColor').value;
         const imageUrl = document.getElementById('catImageUrl').value;
-        if (id) updateCategory(id, { name, color, imageUrl });
-        else addCategory({ name, color, imageUrl });
+        const parentId = document.getElementById('catParentId')?.value || null;
+        if (id) updateCategory(id, { name, color, imageUrl, parentId: parentId || null });
+        else addCategory({ name, color, imageUrl, parentId: parentId || null });
         closeModal();
     });
     document.getElementById('budgetForm')?.addEventListener('submit', (e) => {

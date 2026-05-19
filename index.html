@@ -453,6 +453,12 @@
                 <div class="form-group"><label>Nombre</label><input type="text" id="catName" required></div>
                 <div class="form-group"><label>Color</label><input type="color" id="catColor" value="#10b981"></div>
                 <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="catImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-group">
+                    <label>Categoría padre <span style="font-weight:400; color:#94a3b8;">(opcional — para crear subcategoría)</span></label>
+                    <select id="catParentId" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.9rem; background:#fff;">
+                        <option value="">— Ninguna (categoría principal) —</option>
+                    </select>
+                </div>
                 <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
             </form>
         </div>
