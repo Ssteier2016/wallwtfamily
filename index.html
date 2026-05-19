@@ -394,16 +394,20 @@
                 
                 <!-- Tabla de gastos con ordenamiento por porcentaje y columna de presupuesto -->
                 <div style="margin-top:20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3>Detalle de Gastos por Categoría (con porcentaje y presupuesto)</h3>
-                        <div>
-                            <button id="sortPercentAsc" class="btn-secondary" style="margin-right:5px;">% Menor a Mayor</button>
-                            <button id="sortPercentDesc" class="btn-secondary">% Mayor a Menor</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <h3 style="margin:0;">Detalle de Gastos por Categoría</h3>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                            <button id="catDetailBtnDay"   class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;">Hoy</button>
+                            <button id="catDetailBtnWeek"  class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;">Semana</button>
+                            <button id="catDetailBtnMonth" class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;background:#3b82f6;color:white;">Mes</button>
+                            <span style="border-left:1px solid #e2e8f0;margin:0 2px;"></span>
+                            <button id="sortPercentAsc"  class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;">% ↑</button>
+                            <button id="sortPercentDesc" class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;">% ↓</button>
                         </div>
                     </div>
                     <div class="transactions-table-container" style="margin-top:10px;">
                         <table class="transactions-table" id="expensePercentTable">
-                            <thead><tr><th>Categoría</th><th>Monto Gastado</th><th>Porcentaje</th><th>Presupuesto (mes)</th><th>Estado</th></tr></thead>
+                            <thead><tr><th>Categoría</th><th>Monto Gastado</th><th>% del Total</th><th>Presupuesto (mes)</th><th>Estado</th></tr></thead>
                             <tbody id="expensePercentBody"></tbody>
                         </table>
                     </div>
@@ -412,6 +416,21 @@
                 <div class="recent-transactions" style="margin-top:20px;">
                     <h3>Historial de Gastos (últimas transacciones)</h3>
                     <div class="transactions-list" id="expenseHistoryList"></div>
+                </div>
+
+                <!-- Reintegros y Descuentos -->
+                <div style="margin-top:28px; padding-top:20px; border-top:2px solid #e2e8f0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                        <h3 style="margin:0;">💸 Reintegros y Descuentos</h3>
+                        <div style="display:flex; gap:5px;">
+                            <button id="discountBtnDay"   class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;">Hoy</button>
+                            <button id="discountBtnWeek"  class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;">Semana</button>
+                            <button id="discountBtnMonth" class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;background:#10b981;color:white;">Mes</button>
+                        </div>
+                    </div>
+                    <div id="discountSummary"></div>
+                    <div class="report-container" style="max-height:220px;margin-top:12px;"><canvas id="discountChart"></canvas></div>
+                    <div class="transactions-list" id="discountHistoryList" style="margin-top:14px;"></div>
                 </div>
             </div>
         </main>

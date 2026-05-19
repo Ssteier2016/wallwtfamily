@@ -1352,6 +1352,8 @@ function refreshAllViews() {
     updateFilters();
     updateBudgetMonthSelector();
     renderExpenseReport();
+    renderCategoryDetail(categoryDetailPeriod);
+    renderDiscountsSection(discountPeriod);
     renderBudgetPieChart();
     updateExpenseAccountFilter();
 }
@@ -1960,6 +1962,190 @@ function showDailyTransactions(date) {
 
 // ========== REPORTE DE GASTOS con filtro y presupuesto ==========
 let currentExpensePercentData = [];
+let categoryDetailPeriod = 'month';
+let discountPeriod = 'month';
+
+function getDateRange(period) {
+    const now = new Date();
+    if (period === 'day') {
+        const today = now.toISOString().slice(0, 10);
+        return t => t.date.slice(0, 10) === today;
+    }
+    if (period === 'week') {
+        const dow = now.getDay();
+        const start = new Date(now); start.setDate(now.getDate() - dow); start.setHours(0,0,0,0);
+        const end   = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23,59,59,999);
+        return t => { const d = new Date(t.date + 'T00:00:00'); return d >= start && d <= end; };
+    }
+    // month
+    const currentMonth = now.toISOString().slice(0, 7);
+    return t => t.date.slice(0, 7) === currentMonth;
+}
+
+function renderCategoryDetail(period) {
+    categoryDetailPeriod = period;
+
+    // Resaltar botón activo
+    ['Day','Week','Month'].forEach(p => {
+        const btn = document.getElementById(`catDetailBtn${p}`);
+        if (!btn) return;
+        const active = (p.toLowerCase() === period) || (period === 'month' && p === 'Month') || (period === 'week' && p === 'Week') || (period === 'day' && p === 'Day');
+        btn.style.background = active ? '#3b82f6' : '';
+        btn.style.color      = active ? 'white'   : '';
+    });
+
+    const accountFilter = document.getElementById('expenseAccountFilter')?.value || 'all';
+    const inRange = getDateRange(period);
+
+    let gastos = (Array.isArray(transactions) ? transactions : []).filter(t =>
+        t.type === 'gasto' &&
+        inRange(t) &&
+        (accountFilter === 'all' || t.accId === accountFilter)
+    );
+
+    const total = gastos.reduce((s, t) => s + parseFloat(t.amount), 0);
+    const byCat = {};
+    gastos.forEach(t => {
+        const name = getCategoryName(t.catId);
+        byCat[name] = (byCat[name] || 0) + parseFloat(t.amount);
+    });
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const monthlyBudgets = budgets.filter(b => b.month === currentMonth);
+
+    const data = Object.entries(byCat).map(([name, amount]) => {
+        const cat = categories.find(c => c.name === name || getCategoryName(c.id) === name);
+        const budget = monthlyBudgets.find(b => b.categoryId === cat?.id);
+        const budgetAmt = budget ? budget.amount : 0;
+        return { category: name, amount, percentage: total > 0 ? (amount / total) * 100 : 0, budget: budgetAmt, withinBudget: budgetAmt === 0 || amount <= budgetAmt };
+    });
+    data.sort((a, b) => b.amount - a.amount);
+
+    const tbody = document.getElementById('expensePercentBody');
+    if (!tbody) return;
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">Sin gastos en este período</td></tr>'; return; }
+
+    tbody.innerHTML = data.map(item => {
+        const cat = categories.find(c => c.name === item.category || getCategoryName(c.id) === item.category);
+        const img = cat?.imageUrl ? `<img src="${cat.imageUrl}" style="width:22px;height:22px;border-radius:5px;vertical-align:middle;margin-right:6px;">` : '';
+        const statusColor = item.budget === 0 ? '#64748b' : item.withinBudget ? '#10b981' : '#ef4444';
+        const statusText  = item.budget === 0 ? '—' : item.withinBudget ? '✅ Dentro' : '❌ Excedido';
+        return `<tr>
+            <td>${img}${escapeHtml(item.category)}</td>
+            <td>${formatCurrency(item.amount)}</td>
+            <td><strong>${item.percentage.toFixed(1)}%</strong></td>
+            <td>${item.budget > 0 ? formatCurrency(item.budget) : 'Sin presupuesto'}</td>
+            <td style="color:${statusColor};font-weight:600;">${statusText}</td>
+        </tr>`;
+    }).join('') +
+    `<tr style="font-weight:700;background:#f8fafc;"><td>Total</td><td>${formatCurrency(total)}</td><td>100%</td><td></td><td></td></tr>`;
+}
+
+function renderDiscountsSection(period) {
+    discountPeriod = period;
+
+    // Resaltar botón activo
+    ['Day','Week','Month'].forEach(p => {
+        const btn = document.getElementById(`discountBtn${p}`);
+        if (!btn) return;
+        btn.style.background = p.toLowerCase() === period ? '#10b981' : '';
+        btn.style.color      = p.toLowerCase() === period ? 'white'   : '';
+    });
+
+    const inRange = getDateRange(period);
+    const accountFilter = document.getElementById('expenseAccountFilter')?.value || 'all';
+
+    const withDiscount = (Array.isArray(transactions) ? transactions : []).filter(t =>
+        t.type === 'gasto' &&
+        t.discount &&
+        (t.discountPercent > 0 || t.discountFixed > 0) &&
+        inRange(t) &&
+        (accountFilter === 'all' || t.accId === accountFilter)
+    );
+
+    const totalSaved  = withDiscount.reduce((s, t) => s + (parseFloat(t.originalAmount || t.amount) - parseFloat(t.amount)), 0);
+    const totalSpent  = withDiscount.reduce((s, t) => s + parseFloat(t.amount), 0);
+    const totalOrig   = withDiscount.reduce((s, t) => s + parseFloat(t.originalAmount || t.amount), 0);
+    const avgPct      = totalOrig > 0 ? (totalSaved / totalOrig) * 100 : 0;
+
+    // Summary cards
+    const summaryEl = document.getElementById('discountSummary');
+    if (summaryEl) {
+        summaryEl.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:4px;">
+            <div style="background:#d1fae5;border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#065f46;">${formatCurrency(totalSaved)}</div>
+                <div style="font-size:0.75rem;color:#047857;margin-top:2px;">Total ahorrado</div>
+            </div>
+            <div style="background:#eff6ff;border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#1e40af;">${withDiscount.length}</div>
+                <div style="font-size:0.75rem;color:#3b82f6;margin-top:2px;">Transacciones con descuento</div>
+            </div>
+            <div style="background:#fef3c7;border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:700;color:#92400e;">${avgPct.toFixed(1)}%</div>
+                <div style="font-size:0.75rem;color:#b45309;margin-top:2px;">Ahorro promedio</div>
+            </div>
+        </div>`;
+    }
+
+    // Chart — ahorrado por día
+    const byDate = {};
+    withDiscount.forEach(t => {
+        const key = t.date.slice(0, 10);
+        byDate[key] = (byDate[key] || 0) + (parseFloat(t.originalAmount || t.amount) - parseFloat(t.amount));
+    });
+    const chartLabels = Object.keys(byDate).sort();
+    const chartData   = chartLabels.map(d => byDate[d]);
+
+    const ctx = document.getElementById('discountChart')?.getContext('2d');
+    if (ctx) {
+        if (window.discountChartInstance) window.discountChartInstance.destroy();
+        if (chartLabels.length) {
+            window.discountChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartLabels.map(d => new Date(d + 'T00:00:00').toLocaleDateString('es-AR', { day:'numeric', month:'short' })),
+                    datasets: [{ label: 'Ahorrado', data: chartData, backgroundColor: '#10b981', borderRadius: 5 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => formatCurrency(ctx.raw) } } },
+                    scales: { y: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } } }
+                }
+            });
+        }
+    }
+
+    // History list
+    const histEl = document.getElementById('discountHistoryList');
+    if (histEl) {
+        if (!withDiscount.length) {
+            histEl.innerHTML = '<div class="empty-state">Sin reintegros/descuentos en este período</div>';
+            return;
+        }
+        const sorted = [...withDiscount].sort((a, b) => b.date.localeCompare(a.date));
+        histEl.innerHTML = sorted.map(t => {
+            const saved   = parseFloat(t.originalAmount || t.amount) - parseFloat(t.amount);
+            const pctDisc = t.discountPercent > 0 ? `${t.discountPercent}%` : '';
+            const fixDisc = t.discountFixed  > 0 ? formatCurrency(t.discountFixed) : '';
+            const discLabel = [pctDisc, fixDisc].filter(Boolean).join(' + ');
+            return `
+            <div class="transaction-item" style="border-left:3px solid #10b981;">
+                <div class="transaction-info">
+                    <div class="transaction-icon" style="background:#d1fae5;color:#065f46;"><i class="fas fa-tag"></i></div>
+                    <div class="transaction-details">
+                        <div class="transaction-description">${escapeHtml(t.note) || getCategoryName(t.catId)}</div>
+                        <div class="transaction-meta">${formatDate(t.date)} · ${getCategoryName(t.catId)} · Desc: ${discLabel}</div>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="color:#10b981;font-weight:700;">+ ${formatCurrency(saved)}</div>
+                    <div style="font-size:0.72rem;color:#94a3b8;text-decoration:line-through;">${formatCurrency(parseFloat(t.originalAmount || t.amount))}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+}
 
 function getWeekNumber(dateStr) {
     const date = new Date(dateStr + 'T00:00:00');
@@ -2766,6 +2952,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('expenseBtnMonthly')?.addEventListener('click', () => { expenseChartPeriod = 'monthly'; renderExpenseReport(); });
     document.getElementById('sortPercentAsc')?.addEventListener('click', () => sortExpensePercent('asc'));
     document.getElementById('sortPercentDesc')?.addEventListener('click', () => sortExpensePercent('desc'));
+    // Filtros categoría detalle
+    document.getElementById('catDetailBtnDay')?.addEventListener('click',   () => renderCategoryDetail('day'));
+    document.getElementById('catDetailBtnWeek')?.addEventListener('click',  () => renderCategoryDetail('week'));
+    document.getElementById('catDetailBtnMonth')?.addEventListener('click', () => renderCategoryDetail('month'));
+    // Filtros descuentos
+    document.getElementById('discountBtnDay')?.addEventListener('click',   () => renderDiscountsSection('day'));
+    document.getElementById('discountBtnWeek')?.addEventListener('click',  () => renderDiscountsSection('week'));
+    document.getElementById('discountBtnMonth')?.addEventListener('click', () => renderDiscountsSection('month'));
     document.getElementById('sortCedearsValue')?.addEventListener('click', () => { cedearSortBy = 'value'; renderCapitalView(); });
     document.getElementById('sortCedearsPercent')?.addEventListener('click', () => { cedearSortBy = 'percent'; renderCapitalView(); });
     document.getElementById('clearFilters')?.addEventListener('click', () => {
@@ -2787,6 +2981,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('nextMonth')?.addEventListener('click', () => { currentCalendarDate.setMonth(currentCalendarDate.getMonth()+1); renderCalendar(); });
     document.getElementById('expenseReportType')?.addEventListener('change', () => renderExpenseReport());
     document.getElementById('expenseReportMonth')?.addEventListener('change', () => renderExpenseReport());
+    document.getElementById('expenseAccountFilter')?.addEventListener('change', () => {
+        renderCategoryDetail(categoryDetailPeriod);
+        renderDiscountsSection(discountPeriod);
+    });
     
     document.getElementById('transactionForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
