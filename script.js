@@ -2223,6 +2223,182 @@ async function joinWithCode(code) {
     } catch(e) { showToast("Error al unirse", "error"); }
 }
 
+// ========== BACKUP GOOGLE SHEETS ==========
+
+async function backupToGoogleSheets() {
+    if (!currentUser) { showToast('Iniciá sesión primero', 'error'); return; }
+
+    showToast('Conectando con Google Sheets…', 'success');
+
+    // Pedir permiso de Sheets al usuario (popup breve si ya está logueado)
+    let token;
+    try {
+        const sheetsProvider = new GoogleAuthProvider();
+        sheetsProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
+        sheetsProvider.addScope('https://www.googleapis.com/auth/drive.file');
+        const result = await signInWithPopup(auth, sheetsProvider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        token = credential.accessToken;
+    } catch (e) {
+        showToast('No se pudo obtener permiso para Google Sheets', 'error');
+        return;
+    }
+
+    const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const now = new Date().toLocaleString('es-AR');
+
+    // ── Preparar datos de cada pestaña ──────────────────────
+
+    const txData = [
+        ['Fecha', 'Tipo', 'Categoría', 'Cuenta', 'Monto', 'Monto Original', 'Nota', 'Descuento %', 'Descuento $'],
+        ...transactions
+            .slice()
+            .sort((a, b) => b.date.localeCompare(a.date))
+            .map(t => [
+                new Date(t.date).toLocaleDateString('es-AR'),
+                t.type === 'ingreso' ? 'Ingreso' : 'Gasto',
+                getCategoryName(t.catId),
+                accounts.find(a => a.id === t.accId)?.name || '',
+                t.amount,
+                t.originalAmount || t.amount,
+                t.note || '',
+                t.discountPercent || 0,
+                t.discountFixed || 0,
+            ])
+    ];
+
+    const accData = [
+        ['Nombre', 'Balance'],
+        ...accounts.map(a => [
+            a.name,
+            transactions.filter(t => t.accId === a.id).reduce((s, t) =>
+                t.type === 'ingreso' ? s + t.amount : s - t.amount, 0)
+        ])
+    ];
+
+    const catData = [
+        ['Nombre', 'Categoría padre', 'Color'],
+        ...categories.map(c => [
+            c.name,
+            c.parentId ? (categories.find(p => p.id === c.parentId)?.name || '') : '',
+            c.color
+        ])
+    ];
+
+    const budData = [
+        ['Categoría', 'Mes', 'Límite', 'Gastado', 'Disponible'],
+        ...budgets.map(b => {
+            const cat = categories.find(c => c.id === b.categoryId);
+            const spent = transactions
+                .filter(t => t.catId === b.categoryId && t.type === 'gasto' && t.date.slice(0,7) === b.month)
+                .reduce((s, t) => s + t.amount, 0);
+            return [cat?.name || '', b.month, b.amount, spent, b.amount - spent];
+        })
+    ];
+
+    const goalsData = [
+        ['Meta', 'Objetivo', 'Ahorrado', 'Progreso %'],
+        ...goals.map(g => [
+            g.name,
+            g.targetAmount,
+            g.currentAmount,
+            Math.round((g.currentAmount / g.targetAmount) * 100)
+        ])
+    ];
+
+    const resumenData = [
+        ['Resumen', ''],
+        ['Generado', now],
+        ['', ''],
+        ['Total transacciones', transactions.length],
+        ['Ingresos totales', transactions.filter(t=>t.type==='ingreso').reduce((s,t)=>s+t.amount,0)],
+        ['Gastos totales', transactions.filter(t=>t.type==='gasto').reduce((s,t)=>s+t.amount,0)],
+        ['Balance neto', transactions.reduce((s,t)=>t.type==='ingreso'?s+t.amount:s-t.amount,0)],
+        ['', ''],
+        ['Total cuentas', accounts.length],
+        ['Total categorías', categories.length],
+        ['Total presupuestos', budgets.length],
+        ['Total metas', goals.length],
+    ];
+
+    // ── Crear o reutilizar spreadsheet ──────────────────────
+
+    let spreadsheetId = localStorage.getItem('sheets_backup_id');
+
+    if (spreadsheetId) {
+        // Verificar que siga existiendo
+        try {
+            const check = await fetch(`${SHEETS_API}/${spreadsheetId}?fields=spreadsheetId`, { headers });
+            if (!check.ok) spreadsheetId = null;
+        } catch { spreadsheetId = null; }
+    }
+
+    if (!spreadsheetId) {
+        try {
+            const res = await fetch(SHEETS_API, {
+                method: 'POST', headers,
+                body: JSON.stringify({
+                    properties: { title: 'WallWT Family – Backup' },
+                    sheets: [
+                        { properties: { title: 'Resumen',       sheetId: 0 } },
+                        { properties: { title: 'Transacciones', sheetId: 1 } },
+                        { properties: { title: 'Cuentas',       sheetId: 2 } },
+                        { properties: { title: 'Categorías',    sheetId: 3 } },
+                        { properties: { title: 'Presupuestos',  sheetId: 4 } },
+                        { properties: { title: 'Metas',         sheetId: 5 } },
+                    ]
+                })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const created = await res.json();
+            spreadsheetId = created.spreadsheetId;
+            localStorage.setItem('sheets_backup_id', spreadsheetId);
+        } catch (e) {
+            console.error(e);
+            showToast('No se pudo crear el spreadsheet', 'error');
+            return;
+        }
+    }
+
+    // ── Limpiar y escribir datos ────────────────────────────
+
+    try {
+        // Limpiar primero
+        await fetch(`${SHEETS_API}/${spreadsheetId}/values:batchClear`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ ranges: ['Resumen', 'Transacciones', 'Cuentas', 'Categorías', 'Presupuestos', 'Metas'] })
+        });
+
+        // Escribir todo de una vez
+        const writeRes = await fetch(`${SHEETS_API}/${spreadsheetId}/values:batchUpdate`, {
+            method: 'POST', headers,
+            body: JSON.stringify({
+                valueInputOption: 'USER_ENTERED',
+                data: [
+                    { range: 'Resumen!A1',       values: resumenData },
+                    { range: 'Transacciones!A1', values: txData },
+                    { range: 'Cuentas!A1',       values: accData },
+                    { range: 'Categorías!A1',    values: catData },
+                    { range: 'Presupuestos!A1',  values: budData },
+                    { range: 'Metas!A1',         values: goalsData },
+                ]
+            })
+        });
+
+        if (!writeRes.ok) throw new Error(await writeRes.text());
+
+        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+        localStorage.setItem('sheets_backup_url', url);
+        showToast('✅ Backup guardado en Google Sheets', 'success');
+        window.open(url, '_blank');
+
+    } catch (e) {
+        console.error(e);
+        showToast('Error al escribir en Google Sheets', 'error');
+    }
+}
+
 // ========== LOGIN GOOGLE ==========
 async function loginWithGoogle() {
     if (!firebaseEnabled) { showToast("Firebase no configurado", "error"); return; }
@@ -2564,6 +2740,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inp.click();
     });
     document.getElementById('exportBackupBtn')?.addEventListener('click', exportToJSON);
+    document.getElementById('backupSheetsBtn')?.addEventListener('click', backupToGoogleSheets);
     document.getElementById('shareWalletBtn')?.addEventListener('click', () => generateShareCode());
     document.getElementById('joinWalletBtn')?.addEventListener('click', () => { const code = prompt("Código:"); if(code) joinWithCode(code); });
     document.getElementById('loginGoogleBtn')?.addEventListener('click', loginWithGoogle);
