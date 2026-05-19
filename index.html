@@ -37,6 +37,7 @@
                 </div>
                 <a href="#" class="nav-item" data-view="capital"><i class="fas fa-chart-pie"></i><span>Capital</span></a>
                 <a href="#" class="nav-item" data-view="expenses"><i class="fas fa-chart-bar"></i><span>Gastos</span></a>
+                <a href="#" class="nav-item" data-view="discounts"><i class="fas fa-tag"></i><span>Reintegros/Desc.</span></a>
             </nav>
             <div class="sidebar-footer">
                 <button class="btn-import" id="importBackupBtn"><i class="fas fa-file-import"></i> Importar Backup</button>
@@ -418,19 +419,24 @@
                     <div class="transactions-list" id="expenseHistoryList"></div>
                 </div>
 
-                <!-- Reintegros y Descuentos -->
-                <div style="margin-top:28px; padding-top:20px; border-top:2px solid #e2e8f0;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-                        <h3 style="margin:0;">💸 Reintegros y Descuentos</h3>
-                        <div style="display:flex; gap:5px;">
-                            <button id="discountBtnDay"   class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;">Hoy</button>
-                            <button id="discountBtnWeek"  class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;">Semana</button>
-                            <button id="discountBtnMonth" class="btn-secondary" style="font-size:0.8rem;padding:5px 11px;background:#10b981;color:white;">Mes</button>
-                        </div>
+            </div>
+
+            <!-- Vista: Reintegros y Descuentos -->
+            <div id="discountsView" class="view">
+                <div class="view-header"><h2>💸 Reintegros y Descuentos</h2></div>
+                <div class="reports-header">
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button id="discountBtnDay"   class="btn-secondary" style="font-size:0.85rem;padding:6px 14px;">📅 Hoy</button>
+                        <button id="discountBtnWeek"  class="btn-secondary" style="font-size:0.85rem;padding:6px 14px;">📊 Semana</button>
+                        <button id="discountBtnMonth" class="btn-secondary" style="font-size:0.85rem;padding:6px 14px;background:#10b981;color:white;">📈 Mes</button>
                     </div>
-                    <div id="discountSummary"></div>
-                    <div class="report-container" style="max-height:220px;margin-top:12px;"><canvas id="discountChart"></canvas></div>
-                    <div class="transactions-list" id="discountHistoryList" style="margin-top:14px;"></div>
+                    <p style="font-size:0.8rem;color:#94a3b8;margin-top:8px;">Mostrando gastos que tienen descuento o reintegro aplicado</p>
+                </div>
+                <div id="discountSummary" style="margin-top:16px;"></div>
+                <div class="report-container" style="margin-top:16px;"><canvas id="discountChart"></canvas></div>
+                <div style="margin-top:20px;">
+                    <h3>Historial de reintegros y descuentos</h3>
+                    <div class="transactions-list" id="discountHistoryList" style="margin-top:10px;"></div>
                 </div>
             </div>
         </main>

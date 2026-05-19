@@ -2880,12 +2880,14 @@ function switchView(viewId) {
         calendar: 'Calendario',
         bitcoin: 'Bitcoin',
         capital: 'Capital',
-        expenses: 'Gastos'
+        expenses:  'Gastos',
+        discounts: 'Reintegros y Descuentos',
     };
     const titleElem = document.getElementById('currentViewTitle');
     if (titleElem) titleElem.innerText = titles[viewId] || 'Dashboard';
-    if (viewId === 'expenses') renderExpenseReport();
-    if (viewId === 'capital') renderCapitalView();
+    if (viewId === 'expenses')  renderExpenseReport();
+    if (viewId === 'capital')   renderCapitalView();
+    if (viewId === 'discounts') renderDiscountsSection(discountPeriod);
 }
 
 // ========== EVENT LISTENERS ==========
