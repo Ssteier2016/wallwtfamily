@@ -30,16 +30,20 @@ try {
     firebaseEnabled = true;
     setPersistence(auth, browserLocalPersistence);
 
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUser = user;
-            syncEnabled = true;
+            // syncEnabled permanece false hasta que se carguen los datos de la nube
             const userNameSpan = document.getElementById('userName');
             const loginBtn = document.getElementById('loginGoogleBtn');
             const logoutBtn = document.getElementById('logoutBtn');
             if (userNameSpan) userNameSpan.innerText = user.displayName || user.email;
             if (loginBtn) loginBtn.style.display = 'none';
             if (logoutBtn) logoutBtn.style.display = 'flex';
+            // Cargar datos de la nube ANTES de habilitar el sync,
+            // evita sobreescribir Firestore con datos vacíos de localStorage
+            await loadFromCloud();
+            syncEnabled = true;
         } else {
             currentUser = null;
             syncEnabled = false;
