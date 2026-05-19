@@ -1,9 +1,9 @@
 services:
   - type: web
     name: wallwtfamily
-    env: node
-    buildCommand: npm install
-    startCommand: npm start
+    env: static
+    buildCommand: sed -i "s/ALPHA_KEY_PLACEHOLDER/$alpha_key/g" script.js
+    staticPublishPath: .
     envVars:
       - key: alpha_key
         sync: false

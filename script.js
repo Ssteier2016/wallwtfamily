@@ -691,7 +691,8 @@ async function updateCedearPrices() {
 
     for (const ticker of cedearTickers) {
         try {
-            const response = await fetch(`/api/cedear-price?ticker=${encodeURIComponent(ticker)}`);
+            const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=ALPHA_KEY_PLACEHOLDER`;
+            const response = await fetch(url);
             const result = await response.json();
 
             if (result['Global Quote'] && result['Global Quote']['05. price']) {
