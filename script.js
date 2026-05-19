@@ -687,13 +687,11 @@ async function updateCedearPrices() {
         console.error("Error obteniendo tasa USD/ARS:", e);
     }
 
-    const apiKey = '1RW4YGC5ZFFQHGA6';
     const cedearTickers = defaultCedears;
 
     for (const ticker of cedearTickers) {
         try {
-            const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${apiKey}`;
-            const response = await fetch(url);
+            const response = await fetch(`/api/cedear-price?ticker=${encodeURIComponent(ticker)}`);
             const result = await response.json();
 
             if (result['Global Quote'] && result['Global Quote']['05. price']) {
