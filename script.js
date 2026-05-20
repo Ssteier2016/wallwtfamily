@@ -2376,37 +2376,52 @@ function sortExpensePercent(order) {
 
 // ========== COMPARTIR WALLET ==========
 async function generateShareCode() {
-    if (!firebaseEnabled || !currentUser) { showToast("Debes iniciar sesión para compartir", "error"); return; }
-    const code = Math.random().toString(36).substring(2,10).toUpperCase();
+    if (!firebaseEnabled || !currentUser) { showToast("Debés iniciar sesión para compartir", "error"); return; }
+    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
     try {
         await setDoc(doc(db, 'shareCodes', code), { ownerId: currentUser.uid, createdAt: new Date().toISOString() });
-        showToast(`Código de sincronización: ${code}`, "success");
-    } catch(e) { showToast("Error generando código", "error"); }
+        // Mostrar en modal con botón copiar
+        const display = document.getElementById('shareCodeDisplay');
+        if (display) display.textContent = code;
+        openModal('shareCodeModal');
+    } catch(e) {
+        console.error(e);
+        // Si Firestore está bloqueado, mostrar igual el código con advertencia
+        const display = document.getElementById('shareCodeDisplay');
+        if (display) display.textContent = code;
+        openModal('shareCodeModal');
+        showToast('Advertencia: no se pudo guardar en la nube (bloqueado por extensión)', 'error');
+    }
 }
 
 async function joinWithCode(code) {
-    if (!firebaseEnabled || !currentUser) { showToast("Inicia sesión primero", "error"); return; }
+    if (!firebaseEnabled || !currentUser) { showToast("Iniciá sesión primero", "error"); return; }
+    const clean = code.trim().toUpperCase();
+    if (!clean) return;
     try {
-        const codeDoc = await getDoc(doc(db, 'shareCodes', code));
-        if (!codeDoc.exists()) { showToast("Código inválido", "error"); return; }
+        showToast('Buscando código…', 'success');
+        const codeDoc = await getDoc(doc(db, 'shareCodes', clean));
+        if (!codeDoc.exists()) { showToast("Código inválido o expirado", "error"); return; }
         const ownerId = codeDoc.data().ownerId;
         const ownerDoc = await getDoc(doc(db, 'users', ownerId));
-        if (ownerDoc.exists()) {
-            const data = ownerDoc.data();
-            transactions = Array.isArray(data.transactions) ? data.transactions : [];
-            accounts = Array.isArray(data.accounts) ? data.accounts : [];
-            categories = Array.isArray(data.categories) ? data.categories : [];
-            budgets = Array.isArray(data.budgets) ? data.budgets : [];
-            goals = Array.isArray(data.goals) ? data.goals : [];
-            btcHoldings = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
-            btcHistory = Array.isArray(data.btcHistory) ? data.btcHistory : [];
-            recalculateAllBalances();
-            saveToLocalStorage();
-            await syncToCloud();
-            refreshAllViews();
-            showToast("Wallet sincronizada con éxito", "success");
-        }
-    } catch(e) { showToast("Error al unirse", "error"); }
+        if (!ownerDoc.exists()) { showToast("No se encontró la wallet", "error"); return; }
+        const data = ownerDoc.data();
+        transactions  = Array.isArray(data.transactions)  ? data.transactions  : [];
+        accounts      = Array.isArray(data.accounts)      ? data.accounts      : [];
+        categories    = Array.isArray(data.categories)    ? data.categories    : [];
+        budgets       = Array.isArray(data.budgets)       ? data.budgets       : [];
+        goals         = Array.isArray(data.goals)         ? data.goals         : [];
+        btcHoldings   = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
+        btcHistory    = Array.isArray(data.btcHistory)    ? data.btcHistory    : [];
+        recalculateAllBalances();
+        saveToLocalStorage();
+        await syncToCloud();
+        refreshAllViews();
+        showToast("✅ Wallet importada con éxito", "success");
+    } catch(e) {
+        console.error(e);
+        showToast("Error al unirse. Verificá que no tenés un bloqueador de anuncios activo.", "error");
+    }
 }
 
 // ========== BACKUP GOOGLE SHEETS ==========
@@ -2930,7 +2945,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('exportBackupBtn')?.addEventListener('click', exportToJSON);
     document.getElementById('backupSheetsBtn')?.addEventListener('click', backupToGoogleSheets);
     document.getElementById('shareWalletBtn')?.addEventListener('click', () => generateShareCode());
-    document.getElementById('joinWalletBtn')?.addEventListener('click', () => { const code = prompt("Código:"); if(code) joinWithCode(code); });
+
+    document.getElementById('joinWalletBtn')?.addEventListener('click', () => {
+        const input = document.getElementById('joinCodeInput');
+        if (input) input.value = '';
+        openModal('joinCodeModal');
+    });
+
+    document.getElementById('copyShareCodeBtn')?.addEventListener('click', () => {
+        const code = document.getElementById('shareCodeDisplay')?.textContent || '';
+        if (!code || code === '————') return;
+        navigator.clipboard.writeText(code)
+            .then(() => showToast('Código copiado al portapapeles', 'success'))
+            .catch(() => showToast(`Código: ${code}`, 'success'));
+    });
+
+    document.getElementById('confirmJoinBtn')?.addEventListener('click', () => {
+        const code = document.getElementById('joinCodeInput')?.value || '';
+        if (!code.trim()) { showToast('Ingresá un código', 'error'); return; }
+        closeModal();
+        joinWithCode(code);
+    });
+
+    document.getElementById('joinCodeInput')?.addEventListener('input', e => {
+        e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
     document.getElementById('loginGoogleBtn')?.addEventListener('click', loginWithGoogle);
     document.getElementById('logoutBtn')?.addEventListener('click', logout);
     document.getElementById('addBtcBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('btcAmount')?.value); if(amt>0) addBTC(amt); });

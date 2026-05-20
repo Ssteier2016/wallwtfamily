@@ -619,6 +619,58 @@
     </div>
 </div>
 
+    <!-- Modal: Compartir Wallet -->
+    <div id="shareCodeModal" class="modal">
+        <div class="modal-content" style="max-width:380px;">
+            <div class="modal-header">
+                <h3>Compartir Wallet</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div style="padding:8px 0 16px;">
+                <p style="font-size:0.85rem;color:#64748b;margin-bottom:16px;">
+                    Compartí este código con alguien de confianza. Al usarlo, esa persona verá una copia de tu wallet.
+                </p>
+                <div id="shareCodeDisplay" style="font-size:2rem;font-weight:800;letter-spacing:6px;text-align:center;background:#f1f5f9;border-radius:12px;padding:18px;color:#1e293b;margin-bottom:12px;">
+                    ————
+                </div>
+                <button id="copyShareCodeBtn" style="width:100%;padding:11px;background:#3b82f6;color:white;border:none;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                    <i class="fas fa-copy"></i> Copiar código
+                </button>
+                <p style="font-size:0.75rem;color:#94a3b8;text-align:center;margin-top:10px;">
+                    ⚠️ El código no tiene vencimiento. Guardalo en un lugar seguro.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Unirse con código -->
+    <div id="joinCodeModal" class="modal">
+        <div class="modal-content" style="max-width:380px;">
+            <div class="modal-header">
+                <h3>Unirse con código</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div style="padding:8px 0 16px;">
+                <p style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">
+                    Ingresá el código que te compartieron:
+                </p>
+                <input id="joinCodeInput" type="text" maxlength="20" placeholder="Ej: AB12CD34"
+                    style="width:100%;padding:12px;font-size:1.1rem;letter-spacing:4px;text-align:center;text-transform:uppercase;border:2px solid #e2e8f0;border-radius:10px;outline:none;box-sizing:border-box;margin-bottom:12px;">
+                <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;margin-bottom:14px;">
+                    <p style="font-size:0.8rem;color:#92400e;margin:0;">
+                        ⚠️ <strong>Atención:</strong> esto reemplazará <strong>todos tus datos actuales</strong> con los de la wallet compartida. Esta acción no se puede deshacer.
+                    </p>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-secondary modal-close" style="flex:1;padding:11px;">Cancelar</button>
+                    <button id="confirmJoinBtn" style="flex:1;padding:11px;background:#ef4444;color:white;border:none;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="toast"></div>
 
     <script type="module" src="script.js"></script>
