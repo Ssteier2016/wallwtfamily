@@ -413,6 +413,21 @@ body {
     color: #ef4444;
 }
 
+/* CEDEARs — broker group header */
+.cedear-broker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    margin-top: 8px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
 /* Tables */
 .transactions-table-container {
     overflow-x: auto;

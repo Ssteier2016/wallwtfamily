@@ -593,6 +593,20 @@
                 </select>
             </div>
             <div class="form-group">
+                <label>Broker</label>
+                <select id="cedearBroker" class="filter-select">
+                    <option value="">Sin especificar</option>
+                    <option value="IOL">IOL (InvertirOnline)</option>
+                    <option value="PPI">PPI (Portfolio Personal)</option>
+                    <option value="Balanz">Balanz</option>
+                    <option value="Bull Market">Bull Market</option>
+                    <option value="Cocos">Cocos Capital</option>
+                    <option value="Comafi">Comafi Bursátil</option>
+                    <option value="BIND">BIND</option>
+                    <option value="Otro">Otro</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label>Ticker / CEDEAR</label>
                 <select id="cedearSelect" required></select>
             </div>
@@ -605,8 +619,11 @@
                 <input type="number" id="cedearPrice" step="0.01" placeholder="Se obtiene de Alpha Vantage">
             </div>
             <div class="form-group">
-                <label>Imagen URL (opcional)</label>
-                <input type="url" id="cedearImageUrl" placeholder="https://ejemplo.com/imagen.png">
+                <label>Imagen (URL o archivo local)</label>
+                <input type="url" id="cedearImageUrl" placeholder="https://ejemplo.com/imagen.png" style="margin-bottom:6px;">
+                <label style="font-size:0.82rem;color:#64748b;font-weight:400;display:block;margin-bottom:4px;">O subir desde archivo (se guarda en la nube):</label>
+                <input type="file" id="cedearImageFile" accept="image/*" style="font-size:0.82rem;width:100%;">
+                <div id="cedearImagePreview" style="margin-top:8px;text-align:center;"></div>
             </div>
             <div style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">
                 💡 El precio en ARS se calcula: (Precio USD ÷ Ratio) × Dólar MEP

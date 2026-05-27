@@ -80,6 +80,21 @@ let cedearPrices = {};
 let cedearCustomImages = {};
 let cedearUSDExchange = 1;
 let cedearSortBy = 'none'; // 'value', 'percent', 'none'
+let cedearMeta = {}; // { 'TSLA|IOL': { broker: 'IOL', type: 'cedear' } }
+
+// Helpers clave compuesta TICKER|BROKER
+function cedearKey(ticker, broker) { return broker ? ticker + '|' + broker : ticker; }
+function cedearFromKey(key) {
+    const idx = key.indexOf('|');
+    return idx < 0 ? { ticker: key, broker: '' } : { ticker: key.slice(0, idx), broker: key.slice(idx + 1) };
+}
+async function fileToBase64(file) {
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.readAsDataURL(file);
+    });
+}
 let expenseChartPeriod = 'monthly'; // 'daily', 'weekly', 'monthly'
 const cedearImages = {
     'TSLA': 'https://logo.clearbit.com/tesla.com',
@@ -195,6 +210,7 @@ function initializeData() {
         const savedCedears = localStorage.getItem('finanzas_cedear_holdings');
         const savedCedearPrices = localStorage.getItem('finanzas_cedear_prices');
         const savedCedearImages = localStorage.getItem('finanzas_cedear_custom_images');
+        const savedCedearMeta = localStorage.getItem('finanzas_cedear_meta');
 
         transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
         accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
@@ -212,6 +228,7 @@ function initializeData() {
           cedearHoldings = savedCedears ? JSON.parse(savedCedears) : {};
           cedearPrices = savedCedearPrices ? JSON.parse(savedCedearPrices) : {};
           cedearCustomImages = savedCedearImages ? JSON.parse(savedCedearImages) : {};
+          cedearMeta = savedCedearMeta ? JSON.parse(savedCedearMeta) : {};
 
         if (!Array.isArray(transactions)) transactions = [];
         if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
@@ -264,6 +281,7 @@ function saveToLocalStorage() {
     localStorage.setItem('finanzas_cedear_holdings', JSON.stringify(cedearHoldings));
     localStorage.setItem('finanzas_cedear_prices', JSON.stringify(cedearPrices));
     localStorage.setItem('finanzas_cedear_custom_images', JSON.stringify(cedearCustomImages));
+    localStorage.setItem('finanzas_cedear_meta', JSON.stringify(cedearMeta));
 }
 
 function recalculateAllBalances() {
@@ -288,7 +306,7 @@ async function syncToCloud() {
         await setDoc(userDocRef, {
             transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
             solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-            cedearHoldings, cedearPrices,
+            cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta,
             lastUpdated: new Date().toISOString()
         }, { merge: true });
     } catch (e) { console.error(e); }
@@ -316,6 +334,8 @@ async function loadFromCloud() {
         nexoHistory = Array.isArray(data.nexoHistory) ? data.nexoHistory : [];
         cedearHoldings = typeof data.cedearHoldings === 'object' ? data.cedearHoldings : {};
         cedearPrices = typeof data.cedearPrices === 'object' ? data.cedearPrices : {};
+        cedearCustomImages = typeof data.cedearCustomImages === 'object' ? data.cedearCustomImages : {};
+        cedearMeta = typeof data.cedearMeta === 'object' ? data.cedearMeta : {};
             recalculateAllBalances();
             saveToLocalStorage();
             refreshAllViews();
@@ -343,6 +363,8 @@ function importFromJSON(jsonData) {
         if (data.nexoHistory && Array.isArray(data.nexoHistory)) nexoHistory = data.nexoHistory;
         if (data.cedearHoldings && typeof data.cedearHoldings === 'object') cedearHoldings = data.cedearHoldings;
         if (data.cedearPrices && typeof data.cedearPrices === 'object') cedearPrices = data.cedearPrices;
+        if (data.cedearCustomImages && typeof data.cedearCustomImages === 'object') cedearCustomImages = data.cedearCustomImages;
+        if (data.cedearMeta && typeof data.cedearMeta === 'object') cedearMeta = data.cedearMeta;
         recalculateAllBalances();
         saveToLocalStorage();
         syncToCloud();
@@ -359,7 +381,7 @@ function exportToJSON() {
     const exportData = {
         transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
         solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-        cedearHoldings, cedearPrices, exportDate: new Date().toISOString()
+        cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, exportDate: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1087,12 +1109,15 @@ function deleteNexoMovement(id) {
 }
 
 // ========== CRUD CEDEARS ==========
-function addOrUpdateCedear(ticker, amount) {
+function addOrUpdateCedear(ticker, broker, amount, type) {
     if (amount < 0) { showToast("Cantidad inválida", "error"); return; }
+    const key = cedearKey(ticker, broker);
     if (amount === 0) {
-        delete cedearHoldings[ticker];
+        delete cedearHoldings[key];
+        delete cedearMeta[key];
     } else {
-        cedearHoldings[ticker] = parseFloat(amount);
+        cedearHoldings[key] = parseFloat(amount);
+        cedearMeta[key] = { broker: broker || '', type: type || 'cedear' };
     }
     saveToLocalStorage();
     syncToCloud();
@@ -1404,8 +1429,9 @@ function renderCapitalView() {
     let totalCedearUSD = 0;
     let totalCedearARS = 0;
     const cedearData = [];
-    Object.keys(cedearHoldings).filter(t => cedearHoldings[t] > 0).forEach(ticker => {
-        const amount = cedearHoldings[ticker] || 0;
+    Object.keys(cedearHoldings).filter(k => cedearHoldings[k] > 0).forEach(key => {
+        const { ticker, broker } = cedearFromKey(key);
+        const amount = cedearHoldings[key] || 0;
         const priceUSD = cedearPrices[ticker] || 0;
         const ratio = BYMA_RATIOS[ticker] || 1;
         const cedearPriceUSD = priceUSD / ratio;
@@ -1414,8 +1440,10 @@ function renderCapitalView() {
         const valueARS = amount * cedearPriceARS;
         totalCedearUSD += valueUSD;
         totalCedearARS += valueARS;
-        cedearData.push({ ticker, amount, valueUSD, valueARS, percent: totalCedearARS > 0 ? (valueARS / totalCedearARS) * 100 : 0 });
+        cedearData.push({ key, ticker, broker, amount, valueUSD, valueARS, percent: 0 });
     });
+    // Calcular porcentajes con el total real
+    cedearData.forEach(d => { d.percent = totalCedearARS > 0 ? (d.valueARS / totalCedearARS) * 100 : 0; });
 
     // Ordenar
     if (cedearSortBy === 'value') {
@@ -1424,10 +1452,24 @@ function renderCapitalView() {
         cedearData.sort((a, b) => b.percent - a.percent);
     }
 
-    const cedearCards = cedearData.map(item => {
-        const { ticker, amount, valueUSD, valueARS } = item;
-        const imageUrl = cedearCustomImages[ticker] || cedearImages[ticker] || '';
-        return `
+    // Agrupar por broker
+    const brokerGroups = {};
+    cedearData.forEach(item => {
+        const g = item.broker || 'Sin broker';
+        if (!brokerGroups[g]) brokerGroups[g] = [];
+        brokerGroups[g].push(item);
+    });
+
+    let cedearCards = '';
+    for (const [brokerName, items] of Object.entries(brokerGroups)) {
+        const groupUSD = items.reduce((s, d) => s + d.valueUSD, 0);
+        const groupARS = items.reduce((s, d) => s + d.valueARS, 0);
+        cedearCards += `<div class="cedear-broker-header"><span>${brokerName}</span><span>${formatCurrencyUSD(groupUSD)} | ${formatCurrency(groupARS)}</span></div>`;
+        cedearCards += items.map(item => {
+            const { key, ticker, amount, valueUSD, valueARS } = item;
+            const safeKey = key.replace(/'/g, "\\'");
+            const imageUrl = cedearCustomImages[key] || cedearCustomImages[ticker] || cedearImages[ticker] || '';
+            return `
             <div class="cedear-card" style="padding:10px; background:#f1f5f9; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
                 <div style="display:flex; align-items:center; gap:10px; flex:1;">
                     ${imageUrl ? `<img src="${imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;">` : '<div style="width:40px;height:40px;background:#ccc;border-radius:8px;"></div>'}
@@ -1442,10 +1484,13 @@ function renderCapitalView() {
                         </div>
                     </div>
                 </div>
-                <button class="btn-edit" onclick="editCedear('${ticker}')"><i class="fas fa-pencil-alt"></i></button>
-            </div>
-        `;
-    }).join('');
+                <div style="display:flex;gap:4px;">
+                    <button class="btn-edit" onclick="editCedear('${safeKey}')"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn-delete" onclick="deleteCedearHandler('${safeKey}')"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    }
 
     document.getElementById('cedearsList').innerHTML = cedearCards || '<div style="padding:10px; color:#94a3b8;">Sin CEDEARs.</div>';
     document.getElementById('totalCedearUSD').innerHTML = formatCurrencyUSD(totalCedearUSD);
@@ -1860,8 +1905,9 @@ function renderGoalsList() {
     // Capital total automático
     const capitalBTCARS = btcHoldings * currentBTCPriceARS;
     const capitalBilleteras = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const capitalCedears = Object.keys(cedearHoldings).reduce((sum, ticker) => {
-        const amount = cedearHoldings[ticker] || 0;
+    const capitalCedears = Object.keys(cedearHoldings).reduce((sum, key) => {
+        const { ticker } = cedearFromKey(key);
+        const amount = cedearHoldings[key] || 0;
         const priceUSD = cedearPrices[ticker] || 0;
         const ratio = BYMA_RATIOS[ticker] || 1;
         const cedearPriceARS = (priceUSD / ratio) * dolarMEP;
@@ -2832,23 +2878,31 @@ window.editGoal = (id) => {
     }
 };
 
-window.editCedear = (ticker) => {
-    document.getElementById('cedearTicker').value = ticker;
-    document.getElementById('cedearAmount').value = cedearHoldings[ticker] || 0;
+window.editCedear = (key) => {
+    const { ticker, broker } = cedearFromKey(key);
+    document.getElementById('cedearTicker').value = key;
+    if (document.getElementById('cedearBroker')) document.getElementById('cedearBroker').value = broker || '';
+    document.getElementById('cedearAmount').value = cedearHoldings[key] || 0;
     document.getElementById('cedearPrice').value = cedearPrices[ticker] || '';
-    document.getElementById('cedearImageUrl').value = cedearCustomImages[ticker] || '';
-    document.getElementById('cedearType').value = 'cedear'; // nuevo campo
+    document.getElementById('cedearImageUrl').value = cedearCustomImages[key] || cedearCustomImages[ticker] || '';
+    document.getElementById('cedearType').value = (cedearMeta[key] && cedearMeta[key].type) || 'cedear';
+    if (document.getElementById('cedearImagePreview')) document.getElementById('cedearImagePreview').innerHTML = '';
     updateCedearSelectOptions();
+    setTimeout(() => { document.getElementById('cedearSelect').value = ticker; }, 0);
     openModal('cedearModal');
 };
 
-window.deleteCedearHandler = (ticker) => {
-    if (confirm(`¿Eliminar ${ticker} de tu cartera?`)) {
-        delete cedearHoldings[ticker];
+window.deleteCedearHandler = (key) => {
+    const { ticker, broker } = cedearFromKey(key);
+    const label = broker ? `${ticker} (${broker})` : ticker;
+    if (confirm(`¿Eliminar ${label} de tu cartera?`)) {
+        delete cedearHoldings[key];
+        delete cedearMeta[key];
+        delete cedearCustomImages[key];
         saveToLocalStorage();
         syncToCloud();
         renderCapitalView();
-        showToast(`${ticker} eliminado`, 'success');
+        showToast(`${label} eliminado`, 'success');
     }
 };
 
@@ -2984,8 +3038,23 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cedearTicker').value = '';
         document.getElementById('cedearAmount').value = '';
         document.getElementById('cedearPrice').value = '';
+        if (document.getElementById('cedearBroker')) document.getElementById('cedearBroker').value = '';
+        if (document.getElementById('cedearImageUrl')) document.getElementById('cedearImageUrl').value = '';
+        if (document.getElementById('cedearImagePreview')) document.getElementById('cedearImagePreview').innerHTML = '';
         updateCedearSelectOptions();
         openModal('cedearModal');
+    });
+    // Preview de imagen al seleccionar archivo local
+    document.getElementById('cedearImageFile')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        const preview = document.getElementById('cedearImagePreview');
+        if (file && preview) {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100px;max-height:80px;border-radius:8px;border:1px solid #e2e8f0;">`;
+            };
+            reader.readAsDataURL(file);
+        }
     });
     document.getElementById('generateExpenseReportBtn')?.addEventListener('click', () => renderExpenseReport());
     document.getElementById('expenseBtnDaily')?.addEventListener('click', () => { expenseChartPeriod = 'daily'; renderExpenseReport(); });
@@ -3109,9 +3178,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('cedearForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const ticker = document.getElementById('cedearSelect').value;
+    const broker = document.getElementById('cedearBroker')?.value || '';
     const amount = parseFloat(document.getElementById('cedearAmount').value);
     const manualPrice = parseFloat(document.getElementById('cedearPrice').value);
-    const imageUrl = document.getElementById('cedearImageUrl').value;
+    const imageUrlInput = document.getElementById('cedearImageUrl').value;
+    const imageFileInput = document.getElementById('cedearImageFile');
     const cedearType = document.getElementById('cedearType').value;
 
     if (!ticker) { showToast("Selecciona un CEDEAR", "error"); return; }
@@ -3126,8 +3197,18 @@ document.addEventListener('DOMContentLoaded', () => {
         await fetchCedearPrice(ticker);
     }
 
-    if (imageUrl) cedearCustomImages[ticker] = imageUrl;
-    addOrUpdateCedear(ticker, amount);
+    const key = cedearKey(ticker, broker);
+
+    // Imagen: preferir archivo subido, luego URL manual
+    if (imageFileInput && imageFileInput.files && imageFileInput.files[0]) {
+        const b64 = await fileToBase64(imageFileInput.files[0]);
+        cedearCustomImages[key] = b64;
+        imageFileInput.value = '';
+    } else if (imageUrlInput) {
+        cedearCustomImages[key] = imageUrlInput;
+    }
+
+    addOrUpdateCedear(ticker, broker, amount, cedearType);
     closeModal();
 });
 
