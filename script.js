@@ -84,6 +84,7 @@ let accionSortBy = 'none'; // 'value', 'percent', 'none'
 let cedearMeta = {}; // { 'TSLA|IOL': { broker: 'IOL', type: 'cedear' } }
 let cedearBrokerNotes = {}; // { 'IOL': 'cuenta comitente #123' }
 let cedearDeleted = {}; // { 'TSLA|IOL': { amount, price, broker, type, imageUrl, deletedAt } }
+let cryptoIcons = {}; // { 'SOL': 'url', 'BNB': 'url', 'NEXO': 'url' }
 
 // Helpers clave compuesta TICKER|BROKER
 function cedearKey(ticker, broker) { return broker ? ticker + '|' + broker : ticker; }
@@ -265,6 +266,7 @@ function initializeData() {
         const savedCedearMeta = localStorage.getItem('finanzas_cedear_meta');
         const savedBrokerNotes = localStorage.getItem('finanzas_broker_notes');
         const savedDeleted = localStorage.getItem('finanzas_cedear_deleted');
+        const savedCryptoIcons = localStorage.getItem('finanzas_crypto_icons');
 
         transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
         accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
@@ -285,6 +287,7 @@ function initializeData() {
           cedearMeta = savedCedearMeta ? JSON.parse(savedCedearMeta) : {};
           cedearBrokerNotes = savedBrokerNotes ? JSON.parse(savedBrokerNotes) : {};
           cedearDeleted = savedDeleted ? JSON.parse(savedDeleted) : {};
+          cryptoIcons = savedCryptoIcons ? JSON.parse(savedCryptoIcons) : {};
 
         if (!Array.isArray(transactions)) transactions = [];
         if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
@@ -340,6 +343,7 @@ function saveToLocalStorage() {
     localStorage.setItem('finanzas_cedear_meta', JSON.stringify(cedearMeta));
     localStorage.setItem('finanzas_broker_notes', JSON.stringify(cedearBrokerNotes));
     localStorage.setItem('finanzas_cedear_deleted', JSON.stringify(cedearDeleted));
+    localStorage.setItem('finanzas_crypto_icons', JSON.stringify(cryptoIcons));
 }
 
 function recalculateAllBalances() {
@@ -364,7 +368,7 @@ async function syncToCloud() {
         await setDoc(userDocRef, {
             transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
             solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-            cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted,
+            cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons,
             lastUpdated: new Date().toISOString()
         }, { merge: true });
     } catch (e) { console.error(e); }
@@ -396,6 +400,8 @@ async function loadFromCloud() {
         cedearMeta = typeof data.cedearMeta === 'object' ? data.cedearMeta : {};
         cedearBrokerNotes = typeof data.cedearBrokerNotes === 'object' ? data.cedearBrokerNotes : {};
         cedearDeleted = typeof data.cedearDeleted === 'object' ? data.cedearDeleted : {};
+        cryptoIcons = typeof data.cryptoIcons === 'object' ? data.cryptoIcons : {};
+        setTimeout(applyAllCryptoIcons, 100); // aplicar iconos tras cargar la nube
             recalculateAllBalances();
             saveToLocalStorage();
             refreshAllViews();
@@ -427,6 +433,7 @@ function importFromJSON(jsonData) {
         if (data.cedearMeta && typeof data.cedearMeta === 'object') cedearMeta = data.cedearMeta;
         if (data.cedearBrokerNotes && typeof data.cedearBrokerNotes === 'object') cedearBrokerNotes = data.cedearBrokerNotes;
         if (data.cedearDeleted && typeof data.cedearDeleted === 'object') cedearDeleted = data.cedearDeleted;
+        if (data.cryptoIcons && typeof data.cryptoIcons === 'object') cryptoIcons = data.cryptoIcons;
         recalculateAllBalances();
         saveToLocalStorage();
         syncToCloud();
@@ -443,7 +450,7 @@ function exportToJSON() {
     const exportData = {
         transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
         solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-        cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, exportDate: new Date().toISOString()
+        cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons, exportDate: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1416,6 +1423,89 @@ function getCategoryImage(id) { const c = categories.find(c => c.id === id); ret
 // ========== RENDERIZADO PRINCIPAL ==========
 let currentCharts = {};
 
+// ═══ ICONOS PERSONALIZADOS DE CRYPTO ═══════════════════════
+function applyAllCryptoIcons() {
+    const config = [
+        { key: 'SOL',  view: 'solana',  color: '#00ffa3', bg: '#00ffa320', inputId: 'solIconUrl',  previewId: 'solIconPreview',  faClass: 'fa-coins' },
+        { key: 'BNB',  view: 'binance', color: '#f3ba2f', bg: '#f3ba2f20', inputId: 'bnbIconUrl',  previewId: 'bnbIconPreview',  faClass: 'fa-coins' },
+        { key: 'NEXO', view: 'nexo',    color: '#4a4a8a', bg: '#22222220', inputId: 'nexoIconUrl', previewId: 'nexoIconPreview', faClass: 'fa-coins' },
+    ];
+    config.forEach(({ key, view, color, bg, inputId, previewId, faClass }) => {
+        const url = cryptoIcons[key] || '';
+
+        // 1. Input field value
+        const input = document.getElementById(inputId);
+        if (input && input.value !== url) input.value = url;
+
+        // 2. Inline preview en la sección de cartera
+        const preview = document.getElementById(previewId);
+        if (preview) {
+            preview.innerHTML = url
+                ? `<img src="${url}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;">`
+                : `<i class="fas ${faClass}" style="color:${color};font-size:1.2rem;"></i>`;
+        }
+
+        // 3. Icono en los price-cards de la vista (primer fa-coins)
+        const viewEl = document.getElementById(`${view}View`);
+        if (viewEl) {
+            const coinsIcon = viewEl.querySelector(`.card-icon .fa-${faClass.replace('fa-','')}`);
+            if (coinsIcon) {
+                const cardIconDiv = coinsIcon.parentElement;
+                let existImg = cardIconDiv.querySelector('.crypto-card-icon-img');
+                if (url) {
+                    coinsIcon.style.display = 'none';
+                    if (!existImg) {
+                        existImg = document.createElement('img');
+                        existImg.className = 'crypto-card-icon-img';
+                        existImg.style.cssText = 'width:32px;height:32px;object-fit:cover;border-radius:8px;';
+                        cardIconDiv.appendChild(existImg);
+                    }
+                    existImg.src = url;
+                } else {
+                    coinsIcon.style.display = '';
+                    if (existImg) existImg.remove();
+                }
+            }
+        }
+
+        // 4. Icono en el menú lateral (submenu crypto)
+        const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
+        if (navItem) {
+            const faIcon = navItem.querySelector('i:first-child');
+            let navImg = navItem.querySelector('.crypto-nav-icon');
+            if (url) {
+                if (faIcon) faIcon.style.display = 'none';
+                if (!navImg) {
+                    navImg = document.createElement('img');
+                    navImg.className = 'crypto-nav-icon';
+                    navImg.style.cssText = 'width:20px;height:20px;object-fit:cover;border-radius:4px;flex-shrink:0;';
+                    navItem.insertBefore(navImg, navItem.firstChild);
+                }
+                navImg.src = url;
+            } else {
+                if (faIcon) faIcon.style.display = '';
+                if (navImg) navImg.remove();
+            }
+        }
+    });
+}
+
+function saveCryptoIcon(key) {
+    const inputIds = { 'SOL': 'solIconUrl', 'BNB': 'bnbIconUrl', 'NEXO': 'nexoIconUrl' };
+    const input = document.getElementById(inputIds[key]);
+    if (!input) return;
+    const url = input.value.trim();
+    if (url) {
+        cryptoIcons[key] = url;
+    } else {
+        delete cryptoIcons[key];
+    }
+    saveToLocalStorage();
+    syncToCloud();
+    applyAllCryptoIcons();
+    showToast(`Icono de ${key} guardado`, 'success');
+}
+
 function refreshAllViews() {
     updateDolarMEP();
     updateBTCPrice();
@@ -1443,6 +1533,7 @@ function refreshAllViews() {
     renderDiscountsSection(discountPeriod);
     renderBudgetPieChart();
     updateExpenseAccountFilter();
+    applyAllCryptoIcons();
 }
 
 function renderCapitalView() {
@@ -3325,6 +3416,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         openModal('cedearModal');
     });
+
+    // Botones guardar icono crypto
+    document.getElementById('saveSolIconBtn')?.addEventListener('click', () => saveCryptoIcon('SOL'));
+    document.getElementById('saveBnbIconBtn')?.addEventListener('click', () => saveCryptoIcon('BNB'));
+    document.getElementById('saveNexoIconBtn')?.addEventListener('click', () => saveCryptoIcon('NEXO'));
 
     // Sort buttons para acciones
     document.getElementById('sortAccionesValue')?.addEventListener('click', () => { accionSortBy = 'value'; renderCapitalView(); });
