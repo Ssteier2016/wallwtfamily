@@ -80,6 +80,7 @@ let cedearPrices = {};
 let cedearCustomImages = {};
 let cedearUSDExchange = 1;
 let cedearSortBy = 'none'; // 'value', 'percent', 'none'
+let accionSortBy = 'none'; // 'value', 'percent', 'none'
 let cedearMeta = {}; // { 'TSLA|IOL': { broker: 'IOL', type: 'cedear' } }
 
 // Helpers clave compuesta TICKER|BROKER
@@ -171,6 +172,55 @@ const BYMA_RATIOS = {
 };
 
 const defaultCedears = Object.keys(BYMA_RATIOS);
+
+// ════ ACCIONES ARGENTINAS (MERVAL) ════════════════════════════
+const MERVAL_STOCKS = {
+    // Panel Líder
+    'ALUA':  { name: 'Aluar Aluminio',         panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/aluar.com.ar' },
+    'BBAR':  { name: 'BBVA Argentina',          panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/bbva.com.ar' },
+    'BMA':   { name: 'Banco Macro',             panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/macro.com.ar' },
+    'BYMA':  { name: 'BYMA',                    panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/byma.com.ar' },
+    'CEPU':  { name: 'Central Puerto',          panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/centralpuerto.com' },
+    'COME':  { name: 'Com. del Plata',          panel: 'Panel Líder',   logo: '' },
+    'CRES':  { name: 'Cresud',                  panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/cresud.com.ar' },
+    'CVH':   { name: 'Cablevision Holding',     panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/cablevision.com.ar' },
+    'EDN':   { name: 'Edenor',                  panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/edenor.com' },
+    'GGAL':  { name: 'Grupo Fin. Galicia',      panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/bancogalicia.com.ar' },
+    'HARG':  { name: 'Holcim Argentina',        panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/holcim.com' },
+    'INVJ':  { name: 'Inv. y Representaciones', panel: 'Panel Líder',   logo: '' },
+    'IRSA':  { name: 'IRSA',                    panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/irsa.com.ar' },
+    'LOMA':  { name: 'Loma Negra',              panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/lomanegra.com' },
+    'METR':  { name: 'MetroGAS',                panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/metrogas.com.ar' },
+    'MIRG':  { name: 'Mirgor',                  panel: 'Panel Líder',   logo: '' },
+    'PAMP':  { name: 'Pampa Energia',           panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/pampaenergia.com' },
+    'SUPV':  { name: 'Grupo Supervielle',       panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/supervielle.com.ar' },
+    'TECO2': { name: 'Telecom Argentina',       panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/telecom.com.ar' },
+    'TGNO4': { name: 'TGN',                     panel: 'Panel Líder',   logo: '' },
+    'TGSU2': { name: 'TGS',                     panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/tgs.com.ar' },
+    'TXAR':  { name: 'Ternium Argentina',       panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/terniumargentina.com.ar' },
+    'VALO':  { name: 'Grupo Valores',           panel: 'Panel Líder',   logo: '' },
+    'YPF':   { name: 'YPF',                     panel: 'Panel Líder',   logo: 'https://logo.clearbit.com/ypf.com' },
+    // Panel General
+    'AGRO':  { name: 'Agrometal',               panel: 'Panel General', logo: '' },
+    'AUSO':  { name: 'Autopistas del Sol',      panel: 'Panel General', logo: '' },
+    'BOLT':  { name: 'Boldt',                   panel: 'Panel General', logo: '' },
+    'CAPX':  { name: 'Capex',                   panel: 'Panel General', logo: '' },
+    'CGPA2': { name: 'Garovaglio & Zorr.',      panel: 'Panel General', logo: '' },
+    'CTIO':  { name: 'Consultatio',             panel: 'Panel General', logo: 'https://logo.clearbit.com/consultatio.com.ar' },
+    'DYCA':  { name: 'Dycasa',                  panel: 'Panel General', logo: '' },
+    'FERR':  { name: 'Ferrum',                  panel: 'Panel General', logo: '' },
+    'GBAN':  { name: 'Gas Natural BAN',         panel: 'Panel General', logo: '' },
+    'GRIM':  { name: 'Grimoldi',                panel: 'Panel General', logo: 'https://logo.clearbit.com/grimoldi.com.ar' },
+    'MOLA':  { name: 'Molinos Argentina',       panel: 'Panel General', logo: 'https://logo.clearbit.com/molinos.com.ar' },
+    'MOLI':  { name: 'Molinos Agro',            panel: 'Panel General', logo: '' },
+    'MORI':  { name: 'Morixe Hermanos',         panel: 'Panel General', logo: '' },
+    'MPLM':  { name: 'Multipolar',              panel: 'Panel General', logo: '' },
+    'RICH':  { name: 'Lab. Richmond',           panel: 'Panel General', logo: 'https://logo.clearbit.com/richmond.com.ar' },
+    'RIGO':  { name: 'Rigolleau',               panel: 'Panel General', logo: '' },
+    'ROSE':  { name: 'Roses S.A.',              panel: 'Panel General', logo: '' },
+    'SEMI':  { name: 'INVAP',                   panel: 'Panel General', logo: '' },
+    'TRAN':  { name: 'Transener',               panel: 'Panel General', logo: 'https://logo.clearbit.com/transener.com.ar' },
+};
 
 // Categorías por defecto con imagen
 const defaultCategories = [
@@ -1425,34 +1475,47 @@ function renderCapitalView() {
     document.getElementById('accountsCapitalList').innerHTML = accountsHtml;
     document.getElementById('totalARSBalance').innerHTML = `${formatCurrency(totalBilleterasARS)} | ${formatCurrencyUSD(totalBilleterasARS / dolarMEP)}`;
 
-    // CEDEARs
-    let totalCedearUSD = 0;
-    let totalCedearARS = 0;
-    const cedearData = [];
+    // CEDEARs + Acciones Argentinas (separados por tipo)
+    let totalCedearUSD = 0, totalCedearARS = 0;
+    let totalAccionesUSD = 0, totalAccionesARS = 0;
+    const cedearData = [], accionData = [];
+
     Object.keys(cedearHoldings).filter(k => cedearHoldings[k] > 0).forEach(key => {
         const { ticker, broker } = cedearFromKey(key);
         const amount = cedearHoldings[key] || 0;
-        const priceUSD = cedearPrices[ticker] || 0;
-        const ratio = BYMA_RATIOS[ticker] || 1;
-        const cedearPriceUSD = priceUSD / ratio;
-        const cedearPriceARS = cedearPriceUSD * dolarMEP;
-        const valueUSD = amount * cedearPriceUSD;
-        const valueARS = amount * cedearPriceARS;
-        totalCedearUSD += valueUSD;
-        totalCedearARS += valueARS;
-        cedearData.push({ key, ticker, broker, amount, valueUSD, valueARS, percent: 0 });
+        const isArg = cedearMeta[key] && cedearMeta[key].type === 'accion_arg';
+
+        if (isArg) {
+            const priceARS = cedearPrices[ticker] || 0;
+            const valueARS = amount * priceARS;
+            const valueUSD = dolarMEP > 0 ? valueARS / dolarMEP : 0;
+            totalAccionesUSD += valueUSD;
+            totalAccionesARS += valueARS;
+            accionData.push({ key, ticker, broker, amount, valueUSD, valueARS, percent: 0 });
+        } else {
+            const priceUSD = cedearPrices[ticker] || 0;
+            const ratio = BYMA_RATIOS[ticker] || 1;
+            const cedearPriceUSD = priceUSD / ratio;
+            const cedearPriceARS = cedearPriceUSD * dolarMEP;
+            const valueUSD = amount * cedearPriceUSD;
+            const valueARS = amount * cedearPriceARS;
+            totalCedearUSD += valueUSD;
+            totalCedearARS += valueARS;
+            cedearData.push({ key, ticker, broker, amount, valueUSD, valueARS, percent: 0 });
+        }
     });
-    // Calcular porcentajes con el total real
     cedearData.forEach(d => { d.percent = totalCedearARS > 0 ? (d.valueARS / totalCedearARS) * 100 : 0; });
+    accionData.forEach(d => { d.percent = totalAccionesARS > 0 ? (d.valueARS / totalAccionesARS) * 100 : 0; });
 
-    // Ordenar
-    if (cedearSortBy === 'value') {
-        cedearData.sort((a, b) => b.valueARS - a.valueARS);
-    } else if (cedearSortBy === 'percent') {
-        cedearData.sort((a, b) => b.percent - a.percent);
-    }
+    // Ordenar CEDEARs
+    if (cedearSortBy === 'value') cedearData.sort((a, b) => b.valueARS - a.valueARS);
+    else if (cedearSortBy === 'percent') cedearData.sort((a, b) => b.percent - a.percent);
 
-    // Agrupar por broker
+    // Ordenar Acciones
+    if (accionSortBy === 'value') accionData.sort((a, b) => b.valueARS - a.valueARS);
+    else if (accionSortBy === 'percent') accionData.sort((a, b) => b.percent - a.percent);
+
+    // ─── Render CEDEARs (agrupados por broker) ────────────────
     const brokerGroups = {};
     cedearData.forEach(item => {
         const g = item.broker || 'Sin broker';
@@ -1496,9 +1559,57 @@ function renderCapitalView() {
     document.getElementById('totalCedearUSD').innerHTML = formatCurrencyUSD(totalCedearUSD);
     document.getElementById('totalCedearARS').innerHTML = formatCurrency(totalCedearARS);
 
+    // ─── Render Acciones Argentinas ───────────────────────────
+    const brokerGroupsAcc = {};
+    accionData.forEach(item => {
+        const g = item.broker || 'Sin broker';
+        if (!brokerGroupsAcc[g]) brokerGroupsAcc[g] = [];
+        brokerGroupsAcc[g].push(item);
+    });
+
+    let accionCards = '';
+    for (const [brokerName, items] of Object.entries(brokerGroupsAcc)) {
+        const groupUSD = items.reduce((s, d) => s + d.valueUSD, 0);
+        const groupARS = items.reduce((s, d) => s + d.valueARS, 0);
+        accionCards += `<div class="accion-arg-header"><span>${brokerName}</span><span>${formatCurrencyUSD(groupUSD)} | ${formatCurrency(groupARS)}</span></div>`;
+        accionCards += items.map(item => {
+            const { key, ticker, amount, valueUSD, valueARS } = item;
+            const safeKey = key.replace(/'/g, "\\'");
+            const mervalLogo = MERVAL_STOCKS[ticker] ? MERVAL_STOCKS[ticker].logo : '';
+            const imageUrl = cedearCustomImages[key] || cedearCustomImages[ticker] || mervalLogo || '';
+            const nameLabel = MERVAL_STOCKS[ticker] ? ` <span style="font-size:0.75rem;color:#64748b;">${MERVAL_STOCKS[ticker].name}</span>` : '';
+            return `
+            <div class="cedear-card" style="padding:10px; background:#f0fdf4; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                    ${imageUrl ? `<img src="${imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;">` : '<div style="width:40px;height:40px;background:#bbf7d0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">&#127462;&#127479;</div>'}
+                    <div style="flex:1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span><strong>${ticker}</strong>${nameLabel}</span>
+                            <span>${amount.toFixed(2)} acc.</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #64748b; margin-top:4px;">
+                            <span>${formatCurrencyUSD(valueUSD)}</span>
+                            <span>${formatCurrency(valueARS)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:4px;">
+                    <button class="btn-edit" onclick="editCedear('${safeKey}')"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn-delete" onclick="deleteCedearHandler('${safeKey}')"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    if (document.getElementById('accionesList')) {
+        document.getElementById('accionesList').innerHTML = accionCards || '<div style="padding:10px; color:#94a3b8;">Sin acciones argentinas.</div>';
+    }
+    if (document.getElementById('totalAccionesUSD')) document.getElementById('totalAccionesUSD').innerHTML = formatCurrencyUSD(totalAccionesUSD);
+    if (document.getElementById('totalAccionesARS')) document.getElementById('totalAccionesARS').innerHTML = formatCurrency(totalAccionesARS);
+
     // Totales generales
-    const totalUSD = capitalBTCUSD + capitalSOLUSD + capitalBNBUSD + capitalNEXOUSD + (totalBilleterasARS / dolarMEP) + totalCedearUSD;
-    const totalARS = capitalBTCARS + capitalSOLARS + capitalBNBARS + capitalNEXOARS + totalBilleterasARS + totalCedearARS;
+    const totalUSD = capitalBTCUSD + capitalSOLUSD + capitalBNBUSD + capitalNEXOUSD + (totalBilleterasARS / dolarMEP) + totalCedearUSD + totalAccionesUSD;
+    const totalARS = capitalBTCARS + capitalSOLARS + capitalBNBARS + capitalNEXOARS + totalBilleterasARS + totalCedearARS + totalAccionesARS;
     document.getElementById('totalWealth').innerHTML = formatCurrency(totalARS);
     document.getElementById('totalWealthUSD').innerHTML = formatCurrencyUSD(totalUSD);
 
@@ -1516,6 +1627,8 @@ function renderCapitalView() {
     if (nexoSection) nexoSection.style.display = (activeFilter === 'all' || activeFilter === 'nexo') ? '' : 'none';
     if (billeterasSection) billeterasSection.style.display = (activeFilter === 'all' || activeFilter === 'billeteras') ? '' : 'none';
     if (cedearSection) cedearSection.style.display = (activeFilter === 'all' || activeFilter === 'cedears') ? '' : 'none';
+    const accSection = document.getElementById('capitalAccionesSection');
+    if (accSection) accSection.style.display = (activeFilter === 'all' || activeFilter === 'acciones') ? '' : 'none';
 }
 
 function updateExpenseAccountFilter() {
@@ -1908,6 +2021,10 @@ function renderGoalsList() {
     const capitalCedears = Object.keys(cedearHoldings).reduce((sum, key) => {
         const { ticker } = cedearFromKey(key);
         const amount = cedearHoldings[key] || 0;
+        const isArg = cedearMeta[key] && cedearMeta[key].type === 'accion_arg';
+        if (isArg) {
+            return sum + (amount * (cedearPrices[ticker] || 0));
+        }
         const priceUSD = cedearPrices[ticker] || 0;
         const ratio = BYMA_RATIOS[ticker] || 1;
         const cedearPriceARS = (priceUSD / ratio) * dolarMEP;
@@ -2908,12 +3025,24 @@ window.deleteCedearHandler = (key) => {
 
 function updateCedearSelectOptions() {
     const select = document.getElementById('cedearSelect');
-    const currentTicker = document.getElementById('cedearTicker').value;
-    const allTickers = Object.keys(BYMA_RATIOS).sort();
-    select.innerHTML = '<option value="">-- Seleccionar CEDEAR --</option>' +
-        allTickers.map(ticker =>
-            `<option value="${ticker}" ${ticker === currentTicker ? 'selected' : ''}>${ticker} (ratio ${BYMA_RATIOS[ticker]}:1)</option>`
-        ).join('');
+    const typeEl = document.getElementById('cedearType');
+    const currentType = typeEl ? typeEl.value : 'cedear';
+    const currentKey = document.getElementById('cedearTicker').value;
+    const { ticker: currentTicker } = currentKey ? cedearFromKey(currentKey) : { ticker: '' };
+
+    if (currentType === 'accion_arg') {
+        const tickers = Object.keys(MERVAL_STOCKS).sort();
+        select.innerHTML = '<option value="">-- Seleccionar Accion AR --</option>' +
+            tickers.map(t =>
+                `<option value="${t}" ${t === currentTicker ? 'selected' : ''}>${t} - ${MERVAL_STOCKS[t].name} (${MERVAL_STOCKS[t].panel})</option>`
+            ).join('');
+    } else {
+        const allTickers = Object.keys(BYMA_RATIOS).sort();
+        select.innerHTML = '<option value="">-- Seleccionar CEDEAR --</option>' +
+            allTickers.map(ticker =>
+                `<option value="${ticker}" ${ticker === currentTicker ? 'selected' : ''}>${ticker} (ratio ${BYMA_RATIOS[ticker]}:1)</option>`
+            ).join('');
+    }
 }
 
 function openModal(modalId) {
@@ -3044,6 +3173,47 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCedearSelectOptions();
         openModal('cedearModal');
     });
+    // Listener cambio de tipo en modal CEDEAR/AccionAR
+    document.getElementById('cedearType')?.addEventListener('change', () => {
+        const type = document.getElementById('cedearType').value;
+        const isArg = type === 'accion_arg';
+        const title = document.getElementById('cedearModalTitle');
+        const selLabel = document.getElementById('cedearSelectLabel');
+        const amtLabel = document.getElementById('cedearAmountLabel');
+        const priceLabel = document.getElementById('cedearPriceLabel');
+        const hint = document.getElementById('cedearHint');
+        if (title) title.textContent = isArg ? 'Agregar / Editar Accion AR' : 'Agregar / Editar CEDEAR';
+        if (selLabel) selLabel.textContent = isArg ? 'Ticker / Accion' : 'Ticker / CEDEAR';
+        if (amtLabel) amtLabel.textContent = isArg ? 'Cantidad de acciones' : 'Cantidad de CEDEARs';
+        if (priceLabel) priceLabel.textContent = isArg
+            ? 'Precio ARS (cotizacion actual — ingreso manual)'
+            : 'Precio USD (opcional — se busca automaticamente)';
+        if (hint) hint.textContent = isArg
+            ? '💡 Precio en ARS × Cantidad. El USD se calcula con el Dolar MEP.'
+            : '💡 El precio en ARS se calcula: (Precio USD ÷ Ratio) × Dolar MEP';
+        document.getElementById('cedearTicker').value = '';
+        updateCedearSelectOptions();
+    });
+
+    // Boton Agregar Accion AR
+    document.getElementById('addAccionBtn')?.addEventListener('click', () => {
+        document.getElementById('cedearTicker').value = '';
+        document.getElementById('cedearAmount').value = '';
+        document.getElementById('cedearPrice').value = '';
+        if (document.getElementById('cedearBroker')) document.getElementById('cedearBroker').value = '';
+        if (document.getElementById('cedearImageUrl')) document.getElementById('cedearImageUrl').value = '';
+        if (document.getElementById('cedearImagePreview')) document.getElementById('cedearImagePreview').innerHTML = '';
+        if (document.getElementById('cedearType')) {
+            document.getElementById('cedearType').value = 'accion_arg';
+            document.getElementById('cedearType').dispatchEvent(new Event('change'));
+        }
+        openModal('cedearModal');
+    });
+
+    // Sort buttons para acciones
+    document.getElementById('sortAccionesValue')?.addEventListener('click', () => { accionSortBy = 'value'; renderCapitalView(); });
+    document.getElementById('sortAccionesPercent')?.addEventListener('click', () => { accionSortBy = 'percent'; renderCapitalView(); });
+
     // Preview de imagen al seleccionar archivo local
     document.getElementById('cedearImageFile')?.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -3190,11 +3360,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showToast(`Obteniendo precio de ${ticker}...`, 'success');
 
-    // Si tiene precio manual lo usamos, si no buscamos en Alpha Vantage
+    // Si tiene precio manual lo usamos, si no buscamos en Alpha Vantage (no para acciones AR)
     if (!isNaN(manualPrice) && manualPrice > 0) {
         cedearPrices[ticker] = manualPrice;
-    } else {
+    } else if (cedearType !== 'accion_arg') {
         await fetchCedearPrice(ticker);
+    } else {
+        showToast('Ingresa el precio en ARS manualmente', 'success');
     }
 
     const key = cedearKey(ticker, broker);

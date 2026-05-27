@@ -269,8 +269,10 @@
                 <option value="nexo">Solo NEXO</option>
                 <option value="billeteras">Solo Billeteras</option>
                 <option value="cedears">Solo CEDEARs</option>
+                <option value="acciones">Solo Acciones AR</option>
             </select>
             <button class="btn-primary" id="addCedearBtn"><i class="fas fa-plus"></i> Agregar CEDEAR</button>
+            <button class="btn-secondary" id="addAccionBtn" style="white-space:nowrap;"><i class="fas fa-plus"></i> Acción AR 🇦🇷</button>
         </div>
     </div>
 
@@ -364,6 +366,23 @@
             <hr style="margin:10px 0;">
             <div><strong>Total CEDEARs (USD):</strong> <span id="totalCedearUSD">$0.00</span></div>
             <div><strong>Total CEDEARs (ARS):</strong> <span id="totalCedearARS">$0.00</span></div>
+        </div>
+    </div>
+
+    <!-- Sección Acciones Argentinas -->
+    <div id="capitalAccionesSection" class="card" style="margin-bottom:20px;">
+        <div class="card-content">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="card-label" style="font-weight:700; font-size:1rem;">🇦🇷 Acciones Argentinas</span>
+                <div style="display:flex; gap:5px;">
+                    <button id="sortAccionesValue" class="btn-secondary" style="font-size:0.75rem; padding:4px 8px;">Ordenar por Valor</button>
+                    <button id="sortAccionesPercent" class="btn-secondary" style="font-size:0.75rem; padding:4px 8px;">Ordenar por %</button>
+                </div>
+            </div>
+            <div id="accionesList" style="margin-top:10px; display:grid; gap:10px;"></div>
+            <hr style="margin:10px 0;">
+            <div><strong>Total Acciones (USD):</strong> <span id="totalAccionesUSD">$0.00</span></div>
+            <div><strong>Total Acciones (ARS):</strong> <span id="totalAccionesARS">$0.00</span></div>
         </div>
     </div>
 </div>
@@ -582,7 +601,7 @@
 
 <div id="cedearModal" class="modal">
     <div class="modal-content">
-        <div class="modal-header"><h3>Agregar / Editar CEDEAR</h3><button class="modal-close">&times;</button></div>
+        <div class="modal-header"><h3 id="cedearModalTitle">Agregar / Editar CEDEAR</h3><button class="modal-close">&times;</button></div>
         <form id="cedearForm">
             <input type="hidden" id="cedearTicker">
             <div class="form-group">
@@ -590,6 +609,7 @@
                 <select id="cedearType" class="filter-select">
                     <option value="cedear">CEDEAR (precio ÷ ratio)</option>
                     <option value="accion">Acción directa (precio sin ratio)</option>
+                    <option value="accion_arg">Acción Argentina (precio en ARS)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -607,15 +627,15 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Ticker / CEDEAR</label>
+                <label id="cedearSelectLabel">Ticker / CEDEAR</label>
                 <select id="cedearSelect" required></select>
             </div>
             <div class="form-group">
-                <label>Cantidad de CEDEARs</label>
+                <label id="cedearAmountLabel">Cantidad de CEDEARs</label>
                 <input type="number" id="cedearAmount" step="0.01" required placeholder="0.00">
             </div>
             <div class="form-group">
-                <label>Precio USD (opcional — si no se completa, se busca automáticamente)</label>
+                <label id="cedearPriceLabel">Precio USD (opcional — se busca automáticamente)</label>
                 <input type="number" id="cedearPrice" step="0.01" placeholder="Se obtiene de Alpha Vantage">
             </div>
             <div class="form-group">
@@ -626,7 +646,7 @@
                 <div id="cedearImagePreview" style="margin-top:8px;text-align:center;"></div>
             </div>
             <div style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">
-                💡 El precio en ARS se calcula: (Precio USD ÷ Ratio) × Dólar MEP
+                <span id="cedearHint">💡 El precio en ARS se calcula: (Precio USD ÷ Ratio) × Dólar MEP</span>
             </div>
             <div class="form-actions">
                 <button type="button" class="btn-secondary modal-close">Cancelar</button>

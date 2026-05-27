@@ -428,6 +428,21 @@ body {
     letter-spacing: 0.02em;
 }
 
+/* Acciones Argentinas — broker group header */
+.accion-arg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    margin-top: 8px;
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    color: white;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
 /* Tables */
 .transactions-table-container {
     overflow-x: auto;
