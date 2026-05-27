@@ -850,7 +850,7 @@ function getCedearPriceARS(ticker) {
 }
 
 function formatCurrencyUSD(value) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(value);
+    return 'USD ' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
 function addBTC(amount) {
@@ -1210,26 +1210,45 @@ function renderBTCHistory() {
         items.push({ ...move, runningBalance });
     }
     items.reverse();
-    container.innerHTML = items.map(m => `
-        <div class="transaction-item">
-            <div class="transaction-info">
+    container.innerHTML = items.map(m => {
+        const moveUSD = m.amount * (m.priceUSD || 0);
+        const moveARS = m.amount * (m.priceARS || 0);
+        const balUSD  = m.runningBalance * (m.priceUSD || 0);
+        const balARS  = m.runningBalance * (m.priceARS || 0);
+        const sign    = m.type === 'compra' ? '+' : '-';
+        const amtColor = m.type === 'compra' ? '#10b981' : '#ef4444';
+        return `
+        <div class="transaction-item" style="flex-wrap:wrap; gap:6px; align-items:center;">
+            <div class="transaction-info" style="flex:1; min-width:160px;">
                 <div class="transaction-icon ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
                     ${m.imageUrl ? `<img src="${m.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<i class="fas ${m.type === 'compra' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>`}
                 </div>
                 <div class="transaction-details">
                     <div class="transaction-description">${m.type === 'compra' ? 'Compra de BTC' : 'Venta de BTC'}${m.note ? `: ${escapeHtml(m.note)}` : ''}</div>
-                    <div class="transaction-meta">${formatDate(m.date)} • Precio: ${formatCurrencyUSD(m.priceUSD)} / ${formatCurrency(m.priceARS)} • Saldo después: ${m.runningBalance.toFixed(8)} BTC</div>
+                    <div class="transaction-meta">${formatDate(m.date)}</div>
                 </div>
             </div>
-            <div class="transaction-amount ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
-                ${m.type === 'compra' ? '+' : '-'} ${m.amount.toFixed(8)} BTC
+            <div style="display:flex; align-items:stretch; flex-shrink:0; gap:0;">
+                <div style="text-align:right; padding:0 12px; border-right:1px solid #e2e8f0; min-width:115px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Movimiento</div>
+                    <div style="font-weight:700; font-size:0.88rem; color:${amtColor};">${sign} ${m.amount.toFixed(8)} BTC</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrencyUSD(moveUSD)}</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(moveARS)}</div>
+                </div>
+                <div style="text-align:right; padding:0 12px; min-width:130px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Saldo</div>
+                    <div style="font-weight:600; font-size:0.88rem;">${m.runningBalance.toFixed(8)} BTC</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrencyUSD(balUSD)}</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(balARS)}</div>
+                </div>
             </div>
             <div class="transaction-actions">
-                <button class="btn-edit" onclick="editBtcMovement('${m.id}')"><i class="fas fa-pencil-alt"></i></button>
-                <button class="btn-delete" onclick="deleteBtcMovementHandler('${m.id}')"><i class="fas fa-trash-alt"></i></button>
+                <button class="btn-edit" onclick="editBtcMovement('${m.id}')" ><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteBtcMovementHandler('${m.id}')" ><i class="fas fa-trash-alt"></i></button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function renderSOLHistory() {
@@ -1248,26 +1267,45 @@ function renderSOLHistory() {
         items.push({ ...move, runningBalance });
     }
     items.reverse();
-    container.innerHTML = items.map(m => `
-        <div class="transaction-item">
-            <div class="transaction-info">
+    container.innerHTML = items.map(m => {
+        const moveUSD = m.amount * (m.priceUSD || 0);
+        const moveARS = m.amount * (m.priceARS || 0);
+        const balUSD  = m.runningBalance * (m.priceUSD || 0);
+        const balARS  = m.runningBalance * (m.priceARS || 0);
+        const sign    = m.type === 'compra' ? '+' : '-';
+        const amtColor = m.type === 'compra' ? '#10b981' : '#ef4444';
+        return `
+        <div class="transaction-item" style="flex-wrap:wrap; gap:6px; align-items:center;">
+            <div class="transaction-info" style="flex:1; min-width:160px;">
                 <div class="transaction-icon ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
                     ${m.imageUrl ? `<img src="${m.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<i class="fas ${m.type === 'compra' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>`}
                 </div>
                 <div class="transaction-details">
                     <div class="transaction-description">${m.type === 'compra' ? 'Compra de SOL' : 'Venta de SOL'}${m.note ? `: ${escapeHtml(m.note)}` : ''}</div>
-                    <div class="transaction-meta">${formatDate(m.date)} • Precio: ${formatCurrencyUSD(m.priceUSD)} / ${formatCurrency(m.priceARS)} • Saldo después: ${m.runningBalance.toFixed(8)} SOL</div>
+                    <div class="transaction-meta">${formatDate(m.date)}</div>
                 </div>
             </div>
-            <div class="transaction-amount ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
-                ${m.type === 'compra' ? '+' : '-'} ${m.amount.toFixed(8)} SOL
+            <div style="display:flex; align-items:stretch; flex-shrink:0; gap:0;">
+                <div style="text-align:right; padding:0 12px; border-right:1px solid #e2e8f0; min-width:115px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Movimiento</div>
+                    <div style="font-weight:700; font-size:0.88rem; color:${amtColor};">${sign} ${m.amount.toFixed(8)} SOL</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrencyUSD(moveUSD)}</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(moveARS)}</div>
+                </div>
+                <div style="text-align:right; padding:0 12px; min-width:130px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Saldo</div>
+                    <div style="font-weight:600; font-size:0.88rem;">${m.runningBalance.toFixed(8)} SOL</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrencyUSD(balUSD)}</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(balARS)}</div>
+                </div>
             </div>
             <div class="transaction-actions">
-                <button class="btn-edit" onclick="editSolMovement('${m.id}')"><i class="fas fa-pencil-alt"></i></button>
-                <button class="btn-delete" onclick="deleteSolMovementHandler('${m.id}')"><i class="fas fa-trash-alt"></i></button>
+                <button class="btn-edit" onclick="editSolMovement('${m.id}')" ><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteSolMovementHandler('${m.id}')" ><i class="fas fa-trash-alt"></i></button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function renderBNBHistory() {
@@ -1286,26 +1324,45 @@ function renderBNBHistory() {
         items.push({ ...move, runningBalance });
     }
     items.reverse();
-    container.innerHTML = items.map(m => `
-        <div class="transaction-item">
-            <div class="transaction-info">
+    container.innerHTML = items.map(m => {
+        const moveUSD = m.amount * (m.priceUSD || 0);
+        const moveARS = m.amount * (m.priceARS || 0);
+        const balUSD  = m.runningBalance * (m.priceUSD || 0);
+        const balARS  = m.runningBalance * (m.priceARS || 0);
+        const sign    = m.type === 'compra' ? '+' : '-';
+        const amtColor = m.type === 'compra' ? '#10b981' : '#ef4444';
+        return `
+        <div class="transaction-item" style="flex-wrap:wrap; gap:6px; align-items:center;">
+            <div class="transaction-info" style="flex:1; min-width:160px;">
                 <div class="transaction-icon ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
                     ${m.imageUrl ? `<img src="${m.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<i class="fas ${m.type === 'compra' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>`}
                 </div>
                 <div class="transaction-details">
                     <div class="transaction-description">${m.type === 'compra' ? 'Compra de BNB' : 'Venta de BNB'}${m.note ? `: ${escapeHtml(m.note)}` : ''}</div>
-                    <div class="transaction-meta">${formatDate(m.date)} • Precio: ${formatCurrencyUSD(m.priceUSD)} / ${formatCurrency(m.priceARS)} • Saldo después: ${m.runningBalance.toFixed(8)} BNB</div>
+                    <div class="transaction-meta">${formatDate(m.date)}</div>
                 </div>
             </div>
-            <div class="transaction-amount ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
-                ${m.type === 'compra' ? '+' : '-'} ${m.amount.toFixed(8)} BNB
+            <div style="display:flex; align-items:stretch; flex-shrink:0; gap:0;">
+                <div style="text-align:right; padding:0 12px; border-right:1px solid #e2e8f0; min-width:115px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Movimiento</div>
+                    <div style="font-weight:700; font-size:0.88rem; color:${amtColor};">${sign} ${m.amount.toFixed(8)} BNB</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrencyUSD(moveUSD)}</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(moveARS)}</div>
+                </div>
+                <div style="text-align:right; padding:0 12px; min-width:130px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Saldo</div>
+                    <div style="font-weight:600; font-size:0.88rem;">${m.runningBalance.toFixed(8)} BNB</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrencyUSD(balUSD)}</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(balARS)}</div>
+                </div>
             </div>
             <div class="transaction-actions">
-                <button class="btn-edit" onclick="editBnbMovement('${m.id}')"><i class="fas fa-pencil-alt"></i></button>
-                <button class="btn-delete" onclick="deleteBnbMovementHandler('${m.id}')"><i class="fas fa-trash-alt"></i></button>
+                <button class="btn-edit" onclick="editBnbMovement('${m.id}')" ><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteBnbMovementHandler('${m.id}')" ><i class="fas fa-trash-alt"></i></button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function renderNEXOHistory() {
@@ -1324,26 +1381,45 @@ function renderNEXOHistory() {
         items.push({ ...move, runningBalance });
     }
     items.reverse();
-    container.innerHTML = items.map(m => `
-        <div class="transaction-item">
-            <div class="transaction-info">
+    container.innerHTML = items.map(m => {
+        const moveUSD = m.amount * (m.priceUSD || 0);
+        const moveARS = m.amount * (m.priceARS || 0);
+        const balUSD  = m.runningBalance * (m.priceUSD || 0);
+        const balARS  = m.runningBalance * (m.priceARS || 0);
+        const sign    = m.type === 'compra' ? '+' : '-';
+        const amtColor = m.type === 'compra' ? '#10b981' : '#ef4444';
+        return `
+        <div class="transaction-item" style="flex-wrap:wrap; gap:6px; align-items:center;">
+            <div class="transaction-info" style="flex:1; min-width:160px;">
                 <div class="transaction-icon ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
                     ${m.imageUrl ? `<img src="${m.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<i class="fas ${m.type === 'compra' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>`}
                 </div>
                 <div class="transaction-details">
                     <div class="transaction-description">${m.type === 'compra' ? 'Compra de NEXO' : 'Venta de NEXO'}${m.note ? `: ${escapeHtml(m.note)}` : ''}</div>
-                    <div class="transaction-meta">${formatDate(m.date)} • Precio: ${formatCurrencyUSD(m.priceUSD)} / ${formatCurrency(m.priceARS)} • Saldo después: ${m.runningBalance.toFixed(8)} NEXO</div>
+                    <div class="transaction-meta">${formatDate(m.date)}</div>
                 </div>
             </div>
-            <div class="transaction-amount ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
-                ${m.type === 'compra' ? '+' : '-'} ${m.amount.toFixed(8)} NEXO
+            <div style="display:flex; align-items:stretch; flex-shrink:0; gap:0;">
+                <div style="text-align:right; padding:0 12px; border-right:1px solid #e2e8f0; min-width:115px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Movimiento</div>
+                    <div style="font-weight:700; font-size:0.88rem; color:${amtColor};">${sign} ${m.amount.toFixed(8)} NEXO</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrencyUSD(moveUSD)}</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(moveARS)}</div>
+                </div>
+                <div style="text-align:right; padding:0 12px; min-width:130px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Saldo</div>
+                    <div style="font-weight:600; font-size:0.88rem;">${m.runningBalance.toFixed(8)} NEXO</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrencyUSD(balUSD)}</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(balARS)}</div>
+                </div>
             </div>
             <div class="transaction-actions">
-                <button class="btn-edit" onclick="editNexoMovement('${m.id}')"><i class="fas fa-pencil-alt"></i></button>
-                <button class="btn-delete" onclick="deleteNexoMovementHandler('${m.id}')"><i class="fas fa-trash-alt"></i></button>
+                <button class="btn-edit" onclick="editNexoMovement('${m.id}')" ><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteNexoMovementHandler('${m.id}')" ><i class="fas fa-trash-alt"></i></button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 window.editBtcMovement = (id) => {
