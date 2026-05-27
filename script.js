@@ -82,6 +82,7 @@ let cedearUSDExchange = 1;
 let cedearSortBy = 'none'; // 'value', 'percent', 'none'
 let accionSortBy = 'none'; // 'value', 'percent', 'none'
 let cedearMeta = {}; // { 'TSLA|IOL': { broker: 'IOL', type: 'cedear' } }
+let cedearBrokerNotes = {}; // { 'IOL': 'cuenta comitente #123' }
 
 // Helpers clave compuesta TICKER|BROKER
 function cedearKey(ticker, broker) { return broker ? ticker + '|' + broker : ticker; }
@@ -153,7 +154,7 @@ const BYMA_RATIOS = {
     NVS:4, OKLO:28, ORCL:3, ORLY:222, OXY:5, PAAS:3, PANW:50, PBR:1,
     PEP:18, PFE:4, PG:15, PINS:7, PLTR:3, PM:18, PYPL:8, QCOM:11,
     QQQ:20, RBLX:2, RIO:8, RIOT:3, RKLB:12, ROKU:13, ROST:4, RSP:30,
-    RTX:5, SAP:6, SBUX:12, SCHW:13, SE:32, SHEL:2, SHOP:107, SLB:3,
+    RTX:5, SAP:6, SATL:1, SBUX:12, SCHW:13, SE:32, SHEL:2, SHOP:107, SLB:3,
     SLV:6, SMH:50, SNAP:1, SNOW:30, SONY:8, SPGI:45, SPOT:28, SPXL:25,
     SPY:20, STLA:5, STNE:3, SWKS:21, SYY:8, T:3, TEAM:47, TEM:12,
     TGT:24, TJX:22, TM:15, TMO:22, TMUS:33, TQQQ:25, TSLA:15, TSM:9,
@@ -261,6 +262,7 @@ function initializeData() {
         const savedCedearPrices = localStorage.getItem('finanzas_cedear_prices');
         const savedCedearImages = localStorage.getItem('finanzas_cedear_custom_images');
         const savedCedearMeta = localStorage.getItem('finanzas_cedear_meta');
+        const savedBrokerNotes = localStorage.getItem('finanzas_broker_notes');
 
         transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
         accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
@@ -279,6 +281,7 @@ function initializeData() {
           cedearPrices = savedCedearPrices ? JSON.parse(savedCedearPrices) : {};
           cedearCustomImages = savedCedearImages ? JSON.parse(savedCedearImages) : {};
           cedearMeta = savedCedearMeta ? JSON.parse(savedCedearMeta) : {};
+          cedearBrokerNotes = savedBrokerNotes ? JSON.parse(savedBrokerNotes) : {};
 
         if (!Array.isArray(transactions)) transactions = [];
         if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
@@ -332,6 +335,7 @@ function saveToLocalStorage() {
     localStorage.setItem('finanzas_cedear_prices', JSON.stringify(cedearPrices));
     localStorage.setItem('finanzas_cedear_custom_images', JSON.stringify(cedearCustomImages));
     localStorage.setItem('finanzas_cedear_meta', JSON.stringify(cedearMeta));
+    localStorage.setItem('finanzas_broker_notes', JSON.stringify(cedearBrokerNotes));
 }
 
 function recalculateAllBalances() {
@@ -356,7 +360,7 @@ async function syncToCloud() {
         await setDoc(userDocRef, {
             transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
             solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-            cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta,
+            cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes,
             lastUpdated: new Date().toISOString()
         }, { merge: true });
     } catch (e) { console.error(e); }
@@ -386,6 +390,7 @@ async function loadFromCloud() {
         cedearPrices = typeof data.cedearPrices === 'object' ? data.cedearPrices : {};
         cedearCustomImages = typeof data.cedearCustomImages === 'object' ? data.cedearCustomImages : {};
         cedearMeta = typeof data.cedearMeta === 'object' ? data.cedearMeta : {};
+        cedearBrokerNotes = typeof data.cedearBrokerNotes === 'object' ? data.cedearBrokerNotes : {};
             recalculateAllBalances();
             saveToLocalStorage();
             refreshAllViews();
@@ -415,6 +420,7 @@ function importFromJSON(jsonData) {
         if (data.cedearPrices && typeof data.cedearPrices === 'object') cedearPrices = data.cedearPrices;
         if (data.cedearCustomImages && typeof data.cedearCustomImages === 'object') cedearCustomImages = data.cedearCustomImages;
         if (data.cedearMeta && typeof data.cedearMeta === 'object') cedearMeta = data.cedearMeta;
+        if (data.cedearBrokerNotes && typeof data.cedearBrokerNotes === 'object') cedearBrokerNotes = data.cedearBrokerNotes;
         recalculateAllBalances();
         saveToLocalStorage();
         syncToCloud();
@@ -431,7 +437,7 @@ function exportToJSON() {
     const exportData = {
         transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
         solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-        cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, exportDate: new Date().toISOString()
+        cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, exportDate: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1527,7 +1533,9 @@ function renderCapitalView() {
     for (const [brokerName, items] of Object.entries(brokerGroups)) {
         const groupUSD = items.reduce((s, d) => s + d.valueUSD, 0);
         const groupARS = items.reduce((s, d) => s + d.valueARS, 0);
-        cedearCards += `<div class="cedear-broker-header"><span>${brokerName}</span><span>${formatCurrencyUSD(groupUSD)} | ${formatCurrency(groupARS)}</span></div>`;
+        const noteC = cedearBrokerNotes[brokerName] || '';
+        const safeBN = brokerName.replace(/'/g, "\\'");
+        cedearCards += `<div class="cedear-broker-header"><span>${brokerName}${noteC ? `<span class="broker-note">${noteC}</span>` : ''}<button class="broker-note-btn" onclick="editBrokerNote('${safeBN}')" title="Editar nota">✏️</button></span><span>${formatCurrencyUSD(groupUSD)} | ${formatCurrency(groupARS)}</span></div>`;
         cedearCards += items.map(item => {
             const { key, ticker, amount, valueUSD, valueARS } = item;
             const safeKey = key.replace(/'/g, "\\'");
@@ -1571,7 +1579,9 @@ function renderCapitalView() {
     for (const [brokerName, items] of Object.entries(brokerGroupsAcc)) {
         const groupUSD = items.reduce((s, d) => s + d.valueUSD, 0);
         const groupARS = items.reduce((s, d) => s + d.valueARS, 0);
-        accionCards += `<div class="accion-arg-header"><span>${brokerName}</span><span>${formatCurrencyUSD(groupUSD)} | ${formatCurrency(groupARS)}</span></div>`;
+        const noteA = cedearBrokerNotes[brokerName] || '';
+        const safeBNA = brokerName.replace(/'/g, "\\'");
+        accionCards += `<div class="accion-arg-header"><span>${brokerName}${noteA ? `<span class="broker-note">${noteA}</span>` : ''}<button class="broker-note-btn" onclick="editBrokerNote('${safeBNA}')" title="Editar nota">✏️</button></span><span>${formatCurrencyUSD(groupUSD)} | ${formatCurrency(groupARS)}</span></div>`;
         accionCards += items.map(item => {
             const { key, ticker, amount, valueUSD, valueARS } = item;
             const safeKey = key.replace(/'/g, "\\'");
@@ -3007,6 +3017,20 @@ window.editCedear = (key) => {
     updateCedearSelectOptions();
     setTimeout(() => { document.getElementById('cedearSelect').value = ticker; }, 0);
     openModal('cedearModal');
+};
+
+window.editBrokerNote = (brokerName) => {
+    const current = cedearBrokerNotes[brokerName] || '';
+    const newNote = prompt(`Nota para "${brokerName}" (deja vacío para borrarla):`, current);
+    if (newNote === null) return; // cancelado
+    if (newNote.trim()) {
+        cedearBrokerNotes[brokerName] = newNote.trim();
+    } else {
+        delete cedearBrokerNotes[brokerName];
+    }
+    saveToLocalStorage();
+    syncToCloud();
+    renderCapitalView();
 };
 
 window.deleteCedearHandler = (key) => {
