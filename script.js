@@ -370,7 +370,7 @@ async function syncToCloud() {
             solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
             cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons,
             lastUpdated: new Date().toISOString()
-        }, { merge: true });
+        }); // Sin merge:true — reemplaza el doc completo para que los borrados se propaguen correctamente
     } catch (e) { console.error(e); }
 }
 
@@ -3183,23 +3183,20 @@ window.editBrokerNote = (brokerName) => {
 window.deleteCedearHandler = (key) => {
     const { ticker, broker } = cedearFromKey(key);
     const label = broker ? `${ticker} (${broker})` : ticker;
-    if (confirm(`¿Mover ${label} al historial de eliminados?`)) {
-        // Snapshot antes de borrar
-        cedearDeleted[key] = {
-            amount: cedearHoldings[key] || 0,
-            price: cedearPrices[ticker] || 0,
-            broker: broker || '',
-            type: (cedearMeta[key] && cedearMeta[key].type) || 'cedear',
-            imageUrl: cedearCustomImages[key] || cedearCustomImages[ticker] || '',
-            deletedAt: new Date().toISOString()
-        };
+    if (confirm(`¿Eliminar ${label}?`)) {
+        // Borrar completamente de todos los stores
         delete cedearHoldings[key];
         delete cedearMeta[key];
         delete cedearCustomImages[key];
+        // Eliminar precio si el ticker ya no tiene más posiciones en ningún broker
+        const tickerStillExists = Object.keys(cedearHoldings).some(k => cedearFromKey(k).ticker === ticker);
+        if (!tickerStillExists) delete cedearPrices[ticker];
+        // Eliminar del historial si estaba ahí
+        delete cedearDeleted[key];
         saveToLocalStorage();
         syncToCloud();
         renderCapitalView();
-        showToast(`${label} movido al historial`, 'success');
+        showToast(`${label} eliminado`, 'success');
     }
 };
 
