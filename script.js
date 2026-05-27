@@ -83,6 +83,7 @@ let cedearSortBy = 'none'; // 'value', 'percent', 'none'
 let accionSortBy = 'none'; // 'value', 'percent', 'none'
 let cedearMeta = {}; // { 'TSLA|IOL': { broker: 'IOL', type: 'cedear' } }
 let cedearBrokerNotes = {}; // { 'IOL': 'cuenta comitente #123' }
+let cedearDeleted = {}; // { 'TSLA|IOL': { amount, price, broker, type, imageUrl, deletedAt } }
 
 // Helpers clave compuesta TICKER|BROKER
 function cedearKey(ticker, broker) { return broker ? ticker + '|' + broker : ticker; }
@@ -263,6 +264,7 @@ function initializeData() {
         const savedCedearImages = localStorage.getItem('finanzas_cedear_custom_images');
         const savedCedearMeta = localStorage.getItem('finanzas_cedear_meta');
         const savedBrokerNotes = localStorage.getItem('finanzas_broker_notes');
+        const savedDeleted = localStorage.getItem('finanzas_cedear_deleted');
 
         transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
         accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
@@ -282,6 +284,7 @@ function initializeData() {
           cedearCustomImages = savedCedearImages ? JSON.parse(savedCedearImages) : {};
           cedearMeta = savedCedearMeta ? JSON.parse(savedCedearMeta) : {};
           cedearBrokerNotes = savedBrokerNotes ? JSON.parse(savedBrokerNotes) : {};
+          cedearDeleted = savedDeleted ? JSON.parse(savedDeleted) : {};
 
         if (!Array.isArray(transactions)) transactions = [];
         if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
@@ -336,6 +339,7 @@ function saveToLocalStorage() {
     localStorage.setItem('finanzas_cedear_custom_images', JSON.stringify(cedearCustomImages));
     localStorage.setItem('finanzas_cedear_meta', JSON.stringify(cedearMeta));
     localStorage.setItem('finanzas_broker_notes', JSON.stringify(cedearBrokerNotes));
+    localStorage.setItem('finanzas_cedear_deleted', JSON.stringify(cedearDeleted));
 }
 
 function recalculateAllBalances() {
@@ -360,7 +364,7 @@ async function syncToCloud() {
         await setDoc(userDocRef, {
             transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
             solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-            cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes,
+            cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted,
             lastUpdated: new Date().toISOString()
         }, { merge: true });
     } catch (e) { console.error(e); }
@@ -391,6 +395,7 @@ async function loadFromCloud() {
         cedearCustomImages = typeof data.cedearCustomImages === 'object' ? data.cedearCustomImages : {};
         cedearMeta = typeof data.cedearMeta === 'object' ? data.cedearMeta : {};
         cedearBrokerNotes = typeof data.cedearBrokerNotes === 'object' ? data.cedearBrokerNotes : {};
+        cedearDeleted = typeof data.cedearDeleted === 'object' ? data.cedearDeleted : {};
             recalculateAllBalances();
             saveToLocalStorage();
             refreshAllViews();
@@ -421,6 +426,7 @@ function importFromJSON(jsonData) {
         if (data.cedearCustomImages && typeof data.cedearCustomImages === 'object') cedearCustomImages = data.cedearCustomImages;
         if (data.cedearMeta && typeof data.cedearMeta === 'object') cedearMeta = data.cedearMeta;
         if (data.cedearBrokerNotes && typeof data.cedearBrokerNotes === 'object') cedearBrokerNotes = data.cedearBrokerNotes;
+        if (data.cedearDeleted && typeof data.cedearDeleted === 'object') cedearDeleted = data.cedearDeleted;
         recalculateAllBalances();
         saveToLocalStorage();
         syncToCloud();
@@ -437,7 +443,7 @@ function exportToJSON() {
     const exportData = {
         transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
         solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-        cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, exportDate: new Date().toISOString()
+        cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, exportDate: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1639,6 +1645,56 @@ function renderCapitalView() {
     if (cedearSection) cedearSection.style.display = (activeFilter === 'all' || activeFilter === 'cedears') ? '' : 'none';
     const accSection = document.getElementById('capitalAccionesSection');
     if (accSection) accSection.style.display = (activeFilter === 'all' || activeFilter === 'acciones') ? '' : 'none';
+
+    // ─── Render Historial de Eliminados ──────────────────────
+    const deletedKeys = Object.keys(cedearDeleted);
+    const deletedSection = document.getElementById('capitalDeletedSection');
+    const deletedListEl = document.getElementById('deletedList');
+
+    if (deletedSection) {
+        deletedSection.style.display = (deletedKeys.length > 0 && activeFilter === 'all') ? '' : 'none';
+    }
+
+    if (deletedListEl && deletedKeys.length > 0) {
+        const sorted = [...deletedKeys].sort((a, b) => {
+            const da = cedearDeleted[a].deletedAt || '';
+            const db = cedearDeleted[b].deletedAt || '';
+            return db.localeCompare(da);
+        });
+        deletedListEl.innerHTML = sorted.map(key => {
+            const { ticker, broker } = cedearFromKey(key);
+            const d = cedearDeleted[key];
+            const isArg = d.type === 'accion_arg';
+            const priceLabel = isArg
+                ? `${formatCurrency(d.price || 0)}`
+                : `${formatCurrencyUSD(d.price || 0)}`;
+            const mervalName = MERVAL_STOCKS[ticker] ? MERVAL_STOCKS[ticker].name : '';
+            const dateStr = d.deletedAt
+                ? new Date(d.deletedAt).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' })
+                : '–';
+            const brokerStr = broker || 'Sin broker';
+            const safeKey = key.replace(/'/g, "\\'");
+            const imgSrc = d.imageUrl || (isArg && MERVAL_STOCKS[ticker] ? MERVAL_STOCKS[ticker].logo : '') || cedearImages[ticker] || '';
+            return `
+            <div class="deleted-cedear-item">
+                <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                    ${imgSrc ? `<img src="${imgSrc}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;filter:grayscale(0.8);opacity:0.6;">` : '<div style="width:32px;height:32px;background:#e2e8f0;border-radius:6px;"></div>'}
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:0.85rem; color:#94a3b8; text-decoration:line-through;">
+                            ${ticker}${mervalName ? ` — ${mervalName}` : ''}
+                        </div>
+                        <div style="font-size:0.72rem; color:#94a3b8; margin-top:2px;">
+                            ${brokerStr} · ${(d.amount||0).toFixed(2)} unid. · ${isArg?'ARS':'USD'}: ${priceLabel} · ${dateStr}
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                    <button class="btn-restore" onclick="restoreCedear('${safeKey}')" title="Restaurar a cartera">↩ Restaurar</button>
+                    <button class="btn-perm-delete" onclick="permanentDeleteCedear('${safeKey}')" title="Eliminar definitivamente"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    }
 }
 
 function updateExpenseAccountFilter() {
@@ -3036,14 +3092,50 @@ window.editBrokerNote = (brokerName) => {
 window.deleteCedearHandler = (key) => {
     const { ticker, broker } = cedearFromKey(key);
     const label = broker ? `${ticker} (${broker})` : ticker;
-    if (confirm(`¿Eliminar ${label} de tu cartera?`)) {
+    if (confirm(`¿Mover ${label} al historial de eliminados?`)) {
+        // Snapshot antes de borrar
+        cedearDeleted[key] = {
+            amount: cedearHoldings[key] || 0,
+            price: cedearPrices[ticker] || 0,
+            broker: broker || '',
+            type: (cedearMeta[key] && cedearMeta[key].type) || 'cedear',
+            imageUrl: cedearCustomImages[key] || cedearCustomImages[ticker] || '',
+            deletedAt: new Date().toISOString()
+        };
         delete cedearHoldings[key];
         delete cedearMeta[key];
         delete cedearCustomImages[key];
         saveToLocalStorage();
         syncToCloud();
         renderCapitalView();
-        showToast(`${label} eliminado`, 'success');
+        showToast(`${label} movido al historial`, 'success');
+    }
+};
+
+window.restoreCedear = (key) => {
+    const data = cedearDeleted[key];
+    if (!data) return;
+    const { ticker } = cedearFromKey(key);
+    cedearHoldings[key] = data.amount;
+    cedearMeta[key] = { broker: data.broker || '', type: data.type || 'cedear' };
+    if (data.imageUrl) cedearCustomImages[key] = data.imageUrl;
+    if (data.price) cedearPrices[ticker] = data.price;
+    delete cedearDeleted[key];
+    saveToLocalStorage();
+    syncToCloud();
+    renderCapitalView();
+    showToast(`${ticker} restaurado a tu cartera`, 'success');
+};
+
+window.permanentDeleteCedear = (key) => {
+    const { ticker, broker } = cedearFromKey(key);
+    const label = broker ? `${ticker} (${broker})` : ticker;
+    if (confirm(`¿Eliminar permanentemente ${label} del historial? Esta acción no se puede deshacer.`)) {
+        delete cedearDeleted[key];
+        saveToLocalStorage();
+        syncToCloud();
+        renderCapitalView();
+        showToast(`${label} eliminado permanentemente`, 'success');
     }
 };
 
@@ -3236,6 +3328,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sort buttons para acciones
     document.getElementById('sortAccionesValue')?.addEventListener('click', () => { accionSortBy = 'value'; renderCapitalView(); });
+    document.getElementById('clearDeletedHistoryBtn')?.addEventListener('click', () => {
+        if (Object.keys(cedearDeleted).length === 0) return;
+        if (confirm('¿Limpiar todo el historial de eliminados? Esta acción no se puede deshacer.')) {
+            cedearDeleted = {};
+            saveToLocalStorage();
+            syncToCloud();
+            renderCapitalView();
+            showToast('Historial limpiado', 'success');
+        }
+    });
     document.getElementById('sortAccionesPercent')?.addEventListener('click', () => { accionSortBy = 'percent'; renderCapitalView(); });
 
     // Preview de imagen al seleccionar archivo local

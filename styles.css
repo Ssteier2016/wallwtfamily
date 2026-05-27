@@ -924,3 +924,52 @@ body {
 .broker-note-btn:hover {
     opacity: 1;
 }
+
+/* Historial de CEDEARs eliminados */
+.deleted-cedear-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #fafafa;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+
+.deleted-cedear-item:hover {
+    background: #f1f5f9;
+}
+
+.btn-restore {
+    background: #ecfdf5;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.btn-restore:hover {
+    background: #d1fae5;
+}
+
+.btn-perm-delete {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-perm-delete:hover {
+    background: #fee2e2;
+}
