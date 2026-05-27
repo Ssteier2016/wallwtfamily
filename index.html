@@ -734,6 +734,43 @@
         </div>
     </div>
 
+    <!-- ══ CALCULADORA FLOTANTE ══ -->
+    <button id="floatCalcToggle" class="float-calc-toggle" title="Calculadora">
+        <i class="fas fa-calculator"></i>
+    </button>
+    <div id="floatCalcPanel" class="float-calc-panel">
+        <div class="float-calc-header">
+            <span><i class="fas fa-calculator" style="margin-right:6px;font-size:0.8rem;"></i>Calculadora</span>
+            <button class="float-calc-close" id="floatCalcClose">✕</button>
+        </div>
+        <div class="float-calc-display">
+            <div class="float-calc-expr" id="calcExpr"></div>
+            <div class="float-calc-num"  id="calcNum">0</div>
+        </div>
+        <div class="float-calc-grid">
+            <button data-calc="C"  class="calc-btn calc-fn">C</button>
+            <button data-calc="±"  class="calc-btn calc-fn">±</button>
+            <button data-calc="%"  class="calc-btn calc-fn">%</button>
+            <button data-calc="÷"  class="calc-btn calc-op">÷</button>
+            <button data-calc="7"  class="calc-btn">7</button>
+            <button data-calc="8"  class="calc-btn">8</button>
+            <button data-calc="9"  class="calc-btn">9</button>
+            <button data-calc="×"  class="calc-btn calc-op">×</button>
+            <button data-calc="4"  class="calc-btn">4</button>
+            <button data-calc="5"  class="calc-btn">5</button>
+            <button data-calc="6"  class="calc-btn">6</button>
+            <button data-calc="−"  class="calc-btn calc-op">−</button>
+            <button data-calc="1"  class="calc-btn">1</button>
+            <button data-calc="2"  class="calc-btn">2</button>
+            <button data-calc="3"  class="calc-btn">3</button>
+            <button data-calc="+"  class="calc-btn calc-op">+</button>
+            <button data-calc="⌫"  class="calc-btn calc-fn">⌫</button>
+            <button data-calc="0"  class="calc-btn">0</button>
+            <button data-calc="."  class="calc-btn">.</button>
+            <button data-calc="="  class="calc-btn calc-eq">=</button>
+        </div>
+    </div>
+
     <div id="toast" class="toast"></div>
 
     <script type="module" src="script.js"></script>

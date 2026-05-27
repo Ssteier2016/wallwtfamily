@@ -3697,3 +3697,166 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+
+// ════════════════════════════════════════════════════════
+// CALCULADORA FLOTANTE
+// ════════════════════════════════════════════════════════
+(function () {
+    let cExpr   = '';   // expresion mostrada arriba (ej: "12 + ")
+    let cCurr   = '0';  // numero actual en pantalla
+    let cEvaled = false;
+    let cActiveOp = null;
+
+    // Convierte x a string limpio (max 10 decimales, sin trailing zeros)
+    function niceNum(x) {
+        if (!isFinite(x)) return 'Error';
+        const s = parseFloat(x.toFixed(10));
+        return String(s);
+    }
+
+    // Formatea el numero para mostrar en pantalla (separadores de miles)
+    function fmtDisplay(str) {
+        if (str === 'Error' || str === '') return str || '0';
+        if (str.endsWith('.')) return str;          // escribiendo decimal
+        const n = parseFloat(str);
+        if (isNaN(n)) return str;
+        if (Math.abs(n) >= 1e13 || (Math.abs(n) < 1e-4 && n !== 0)) return n.toExponential(4);
+        if (str.includes('.')) return str;          // mantener decimales tal cual
+        const neg = str.startsWith('-');
+        const abs = neg ? str.slice(1) : str;
+        return (neg ? '-' : '') + parseInt(abs, 10).toLocaleString('es-AR');
+    }
+
+    // Evalua expresion con solo numeros y operadores basicos (sin eval externo)
+    function safeEval(expr) {
+        // Acepta: digitos, +, -, *, /, ., espacios, e (notacion cientifica)
+        if (!/^[\d\s\+\-\*\/\.e]+$/.test(expr)) throw new Error('invalid');
+        // eslint-disable-next-line no-new-func
+        return Function('"use strict";return(' + expr + ')')();
+    }
+
+    function normalizeOp(v) {
+        return v === '×' ? '*' : v === '÷' ? '/' : v === '−' ? '-' : v;
+    }
+
+    function updateDisplay() {
+        const exprEl = document.getElementById('calcExpr');
+        const numEl  = document.getElementById('calcNum');
+        if (!exprEl || !numEl) return;
+        exprEl.textContent = cExpr;
+        const disp = fmtDisplay(cCurr);
+        numEl.textContent  = disp;
+        const len = disp.replace(/[^\d]/g, '').length;
+        numEl.style.fontSize = len > 12 ? '1.1rem' : len > 9 ? '1.45rem' : '1.9rem';
+    }
+
+    function highlightOp() {
+        document.querySelectorAll('.calc-btn.calc-op').forEach(b => {
+            b.classList.toggle('active-op', b.dataset.calc === cActiveOp);
+        });
+    }
+
+    window.calcDo = function (val) {
+        const DIGITS = '0123456789';
+        const OPS    = ['+', '−', '×', '÷'];
+
+        if (val === 'C') {
+            cExpr = ''; cCurr = '0'; cEvaled = false; cActiveOp = null;
+        }
+        else if (val === '⌫') {
+            if (cEvaled || cCurr === 'Error') { cCurr = '0'; cExpr = ''; cEvaled = false; }
+            else cCurr = cCurr.length > 1 ? cCurr.slice(0, -1) : '0';
+        }
+        else if (val === '±') {
+            if (cCurr !== '0' && cCurr !== 'Error')
+                cCurr = cCurr.startsWith('-') ? cCurr.slice(1) : '-' + cCurr;
+        }
+        else if (val === '%') {
+            const n = parseFloat(cCurr);
+            if (!isNaN(n)) cCurr = niceNum(n / 100);
+        }
+        else if (OPS.includes(val)) {
+            // Encadenar: si hay expresion acumulada, evaluarla primero
+            if (cExpr && !cEvaled) {
+                try {
+                    const e = (cExpr + cCurr).replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+                    cCurr = niceNum(safeEval(e));
+                } catch (_) {}
+            }
+            cExpr    = cCurr + ' ' + val + ' ';
+            cCurr    = '0';
+            cEvaled  = false;
+            cActiveOp = val;
+        }
+        else if (val === '=') {
+            if (!cExpr) return;
+            const full = cExpr + cCurr;
+            const jsExpr = full.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+            try {
+                const r = safeEval(jsExpr);
+                cExpr   = full + ' =';
+                cCurr   = niceNum(r);
+                cEvaled = true;
+                cActiveOp = null;
+            } catch (_) {
+                cCurr = 'Error'; cExpr = ''; cEvaled = false;
+            }
+        }
+        else if (val === '.') {
+            if (cEvaled) { cCurr = '0.'; cExpr = ''; cEvaled = false; cActiveOp = null; }
+            else if (!cCurr.includes('.')) cCurr += '.';
+        }
+        else if (DIGITS.includes(val)) {
+            if (cEvaled) { cCurr = val; cExpr = ''; cEvaled = false; cActiveOp = null; }
+            else if (cCurr === '0')  cCurr = val;
+            else if (cCurr === '-0') cCurr = '-' + val;
+            else if (cCurr !== 'Error' && cCurr.replace(/[^\d]/g,'').length < 15)
+                cCurr += val;
+        }
+
+        updateDisplay();
+        highlightOp();
+    };
+
+    window.toggleCalc = function () {
+        const panel = document.getElementById('floatCalcPanel');
+        if (!panel) return;
+        const opening = !panel.classList.contains('open');
+        panel.classList.toggle('open');
+        if (opening) updateDisplay();
+    };
+
+    // Soporte de teclado (solo cuando la calculadora está abierta)
+    document.addEventListener('keydown', function (e) {
+        const panel = document.getElementById('floatCalcPanel');
+        if (!panel || !panel.classList.contains('open')) return;
+        // No interferir con inputs de texto
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        const k = e.key;
+        if (k >= '0' && k <= '9')        { e.preventDefault(); window.calcDo(k); }
+        else if (k === '+')               { e.preventDefault(); window.calcDo('+'); }
+        else if (k === '-')               { e.preventDefault(); window.calcDo('−'); }
+        else if (k === '*')               { e.preventDefault(); window.calcDo('×'); }
+        else if (k === '/')               { e.preventDefault(); window.calcDo('÷'); }
+        else if (k === '%')               { e.preventDefault(); window.calcDo('%'); }
+        else if (k === '.')               { e.preventDefault(); window.calcDo('.'); }
+        else if (k === 'Enter' || k === '=') { e.preventDefault(); window.calcDo('='); }
+        else if (k === 'Backspace')       { e.preventDefault(); window.calcDo('⌫'); }
+        else if (k === 'Escape')          { e.preventDefault(); window.toggleCalc(); }
+        else if (k === 'Delete')          { e.preventDefault(); window.calcDo('C'); }
+    });
+
+    // Inicializar listeners cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('floatCalcToggle')
+            ?.addEventListener('click', window.toggleCalc);
+        document.getElementById('floatCalcClose')
+            ?.addEventListener('click', window.toggleCalc);
+        document.getElementById('floatCalcPanel')
+            ?.addEventListener('click', function (e) {
+                const btn = e.target.closest('[data-calc]');
+                if (btn) window.calcDo(btn.dataset.calc);
+            });
+    });
+})();
