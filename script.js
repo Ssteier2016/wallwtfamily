@@ -387,11 +387,19 @@ function recalculateAllBalances() {
     accounts.forEach(acc => acc.balance = 0);
     if (!Array.isArray(transactions)) transactions = [];
     transactions.forEach(t => {
-        const acc = accounts.find(a => a.id === t.accId);
-        if (acc) {
+        if (t.type === 'transferencia') {
+            const srcAcc = accounts.find(a => a.id === t.accId);
+            const destAcc = accounts.find(a => a.id === t.destAccId);
             const amount = parseFloat(t.amount);
-            if (t.type === 'ingreso') acc.balance += amount;
-            else acc.balance -= amount;
+            if (srcAcc) srcAcc.balance -= amount;
+            if (destAcc) destAcc.balance += amount;
+        } else {
+            const acc = accounts.find(a => a.id === t.accId);
+            if (acc) {
+                const amount = parseFloat(t.amount);
+                if (t.type === 'ingreso') acc.balance += amount;
+                else acc.balance -= amount;
+            }
         }
     });
 }
@@ -584,22 +592,19 @@ function addTransaction(transaction) {
         id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
         amount: parseFloat(transaction.amount),
         originalAmount: transaction.originalAmount || parseFloat(transaction.amount),
-        catId: transaction.catId,
+        catId: transaction.type === 'transferencia' ? null : transaction.catId,
         accId: transaction.accId,
+        destAccId: transaction.type === 'transferencia' ? transaction.destAccId : null,
         note: transaction.note || '',
         type: transaction.type,
         date: transaction.date,
-        discount: transaction.discount || false,
-        discountPercent: transaction.discountPercent || 0,
-        discountFixed: transaction.discountFixed || 0,
+        discount: transaction.type === 'transferencia' ? false : (transaction.discount || false),
+        discountPercent: transaction.type === 'transferencia' ? 0 : (transaction.discountPercent || 0),
+        discountFixed: transaction.type === 'transferencia' ? 0 : (transaction.discountFixed || 0),
         currency: transaction.currency || 'ARS'
     };
     transactions.push(newTransaction);
-    const account = accounts.find(a => a.id === newTransaction.accId);
-    if (account) {
-        if (newTransaction.type === 'ingreso') account.balance += newTransaction.amount;
-        else account.balance -= newTransaction.amount;
-    }
+    recalculateAllBalances();
     saveToLocalStorage();
     syncToCloud();
     refreshAllViews();
@@ -611,17 +616,14 @@ function updateTransaction(id, updatedData) {
     const index = transactions.findIndex(t => t.id === id);
     if (index === -1) return null;
     const old = transactions[index];
-    const oldAcc = accounts.find(a => a.id === old.accId);
-    if (oldAcc) {
-        if (old.type === 'ingreso') oldAcc.balance -= old.amount;
-        else oldAcc.balance += old.amount;
-    }
-    transactions[index] = { ...old, ...updatedData, amount: parseFloat(updatedData.amount) };
-    const newAcc = accounts.find(a => a.id === transactions[index].accId);
-    if (newAcc) {
-        if (transactions[index].type === 'ingreso') newAcc.balance += transactions[index].amount;
-        else newAcc.balance -= transactions[index].amount;
-    }
+    transactions[index] = { 
+        ...old, 
+        ...updatedData, 
+        amount: parseFloat(updatedData.amount),
+        destAccId: updatedData.type === 'transferencia' ? updatedData.destAccId : null,
+        catId: updatedData.type === 'transferencia' ? null : updatedData.catId
+    };
+    recalculateAllBalances();
     saveToLocalStorage();
     syncToCloud();
     refreshAllViews();
@@ -2009,18 +2011,40 @@ function renderDashboard() {
     const recent = [...(Array.isArray(transactions) ? transactions : [])].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,5);
     const container = document.getElementById('recentTransactionsList');
     if (container) {
-        container.innerHTML = recent.map(t => `
-            <div class="transaction-item">
-                <div class="transaction-info">
-                    <div class="transaction-icon ${t.type}"><i class="fas ${t.type==='ingreso'?'fa-arrow-down':'fa-arrow-up'}"></i></div>
-                    <div class="transaction-details">
-                        <div class="transaction-description">${escapeHtml(t.note) || (t.type==='ingreso'?'Ingreso':'Gasto')}</div>
-                        <div class="transaction-meta">${formatDate(t.date)} • ${getCategoryName(t.catId)}</div>
+        container.innerHTML = recent.map(t => {
+            let desc = escapeHtml(t.note) || (t.type==='ingreso'?'Ingreso':'Gasto');
+            let meta = "";
+            let amountClass = t.type;
+            let amountSign = t.type === 'ingreso' ? '+' : '-';
+            let iconClass = t.type;
+            let iconHtml = `<i class="fas ${t.type==='ingreso'?'fa-arrow-down':'fa-arrow-up'}"></i>`;
+            let amountStyle = "";
+            
+            if (t.type === 'transferencia') {
+                desc = escapeHtml(t.note) || 'Transferencia';
+                meta = `${formatDate(t.date)} • ${getAccountName(t.accId)} ➜ ${getAccountName(t.destAccId)}`;
+                amountClass = "transfer";
+                amountSign = "";
+                iconClass = "transfer";
+                iconHtml = `<i class="fas fa-exchange-alt"></i>`;
+                amountStyle = "color:#64748b;";
+            } else {
+                meta = `${formatDate(t.date)} • ${getCategoryName(t.catId)}`;
+            }
+            
+            return `
+                <div class="transaction-item">
+                    <div class="transaction-info">
+                        <div class="transaction-icon ${iconClass}">${iconHtml}</div>
+                        <div class="transaction-details">
+                            <div class="transaction-description">${desc}</div>
+                            <div class="transaction-meta">${meta}</div>
+                        </div>
                     </div>
+                    <div class="transaction-amount ${amountClass}" style="${amountStyle}">${amountSign} ${formatCurrency(t.amount)}</div>
                 </div>
-                <div class="transaction-amount ${t.type}">${t.type==='ingreso'?'+':'-'} ${formatCurrency(t.amount)}</div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
     updateExpenseChart();
     updateIncomeChart();
@@ -2158,25 +2182,52 @@ function renderTransactionsList() {
     const accountFilter = document.getElementById('filterAccount')?.value;
     const categoryFilter = document.getElementById('filterCategory')?.value;
     const monthFilter = document.getElementById('filterMonth')?.value;
+    
+    // Add support for filtering transfers by source or destination account
     if (typeFilter && typeFilter !== 'all') filtered = filtered.filter(t => t.type === typeFilter);
-    if (accountFilter && accountFilter !== 'all') filtered = filtered.filter(t => t.accId === accountFilter);
+    if (accountFilter && accountFilter !== 'all') filtered = filtered.filter(t => t.accId === accountFilter || t.destAccId === accountFilter);
     if (categoryFilter && categoryFilter !== 'all') filtered = filtered.filter(t => t.catId === categoryFilter);
     if (monthFilter) filtered = filtered.filter(t => t.date.slice(0,7) === monthFilter);
+    
     filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
     if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No hay transacciones</td></tr>';
         return;
     }
+    
     tbody.innerHTML = filtered.map(t => {
-        const catImg = getCategoryImage(t.catId);
+        const catImg = t.type === 'transferencia' ? '' : getCategoryImage(t.catId);
+        const noteText = escapeHtml(t.note) || (t.type === 'ingreso' ? 'Ingreso' : (t.type === 'transferencia' ? 'Transferencia' : 'Gasto'));
+        
+        let catHtml = '';
+        if (t.type === 'transferencia') {
+            catHtml = `<span style="background:#3b82f620; color:#3b82f6; padding:4px 8px; border-radius:8px;">Transferencia</span>`;
+        } else {
+            catHtml = `<span style="background:${getCategoryColor(t.catId)}20; color:${getCategoryColor(t.catId)}; padding:4px 8px; border-radius:8px;">${getCategoryName(t.catId)}</span>`;
+        }
+        
+        let walletHtml = '';
+        if (t.type === 'transferencia') {
+            walletHtml = `${getAccountName(t.accId)} <i class="fas fa-exchange-alt" style="color:#64748b;font-size:0.8rem;margin:0 4px;"></i> ${getAccountName(t.destAccId)}`;
+        } else {
+            walletHtml = getAccountName(t.accId);
+        }
+        
+        let amountHtml = '';
+        if (t.type === 'transferencia') {
+            amountHtml = `<span style="color:#3b82f6;">${formatCurrency(t.amount)}</span>`;
+        } else {
+            amountHtml = `<span style="color:${t.type === 'ingreso' ? '#10b981' : '#ef4444'};">${t.type === 'ingreso' ? '+' : '-'} ${formatCurrency(t.amount)}</span>`;
+        }
+        
         return `
             <tr>
                 <td>${formatDate(t.date)}</td>
                 <td>${catImg ? `<img src="${catImg}" class="transaction-img" style="width:40px;height:40px;object-fit:cover;border-radius:8px;">` : '—'}</td>
-                <td>${escapeHtml(t.note) || (t.type==='ingreso'?'Ingreso':'Gasto')}</td>
-                <td><span style="background:${getCategoryColor(t.catId)}20; color:${getCategoryColor(t.catId)}; padding:4px 8px; border-radius:8px;">${getCategoryName(t.catId)}</span></td>
-                <td>${getAccountName(t.accId)}</td>
-                <td style="color:${t.type==='ingreso'?'#10b981':'#ef4444'}">${t.type==='ingreso'?'+':'-'} ${formatCurrency(t.amount)}</td>
+                <td>${noteText}</td>
+                <td>${catHtml}</td>
+                <td>${walletHtml}</td>
+                <td>${amountHtml}</td>
                 <td><button class="btn-edit" onclick="editTransaction('${t.id}')"><i class="fas fa-pencil-alt"></i></button><button class="btn-delete" onclick="deleteTransactionHandler('${t.id}')"><i class="fas fa-trash-alt"></i></button></td>
             </tr>
         `;
@@ -3198,6 +3249,8 @@ function updateFilters() {
     if (catFormSelect) { const val = catFormSelect.value; catFormSelect.innerHTML = buildCategoryOptions(val, false); }
     const accFormSelect = document.getElementById('accId');
     if (accFormSelect) { const val = accFormSelect.value; accFormSelect.innerHTML = accounts.map(a => `<option value="${a.id}" ${val===a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join(''); }
+    const destAccFormSelect = document.getElementById('destAccId');
+    if (destAccFormSelect) { const val = destAccFormSelect.value; destAccFormSelect.innerHTML = accounts.map(a => `<option value="${a.id}" ${val===a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join(''); }
     const budgetCatSelect = document.getElementById('budgetCategoryId');
     if (budgetCatSelect) { budgetCatSelect.innerHTML = buildCategoryOptions('', false); }
 }
@@ -3233,6 +3286,28 @@ window.editBudget = (id) => {
     openModal('budgetModal');
 };
 
+function toggleTransferFields(type) {
+    const destGroup = document.getElementById('destAccGroup');
+    const catGroup = document.getElementById('categoryFormGroup');
+    const discountGroup = document.querySelector('.discount-group');
+    const accLabel = document.getElementById('accIdLabel');
+    const catSelect = document.getElementById('categoryId');
+    
+    if (type === 'transferencia') {
+        if (destGroup) destGroup.style.display = 'block';
+        if (catGroup) catGroup.style.display = 'none';
+        if (discountGroup) discountGroup.style.display = 'none';
+        if (accLabel) accLabel.innerText = 'Billetera Origen';
+        if (catSelect) catSelect.removeAttribute('required');
+    } else {
+        if (destGroup) destGroup.style.display = 'none';
+        if (catGroup) catGroup.style.display = 'block';
+        if (discountGroup) discountGroup.style.display = 'block';
+        if (accLabel) accLabel.innerText = 'Billetera';
+        if (catSelect) catSelect.setAttribute('required', 'required');
+    }
+}
+
 window.editTransaction = (id) => {
     const modal = document.getElementById('transactionModal');
     if (!modal) return;
@@ -3240,19 +3315,25 @@ window.editTransaction = (id) => {
     document.getElementById('transactionId').value = id || '';
     document.getElementById('date').value = new Date().toISOString().split('T')[0];
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-    const gastoBtn = document.querySelector('.type-btn[data-type="gasto"]');
-    if (gastoBtn) gastoBtn.classList.add('active');
+    
     updateFilters();
+    
     if (id) {
         const t = transactions.find(tx => tx.id === id);
         if (t) {
             document.getElementById('amount').value = t.amount;
             document.getElementById('date').value = t.date.split('T')[0];
-            document.getElementById('categoryId').value = t.catId;
+            document.getElementById('categoryId').value = t.catId || '';
             document.getElementById('accId').value = t.accId;
+            if (t.type === 'transferencia') {
+                document.getElementById('destAccId').value = t.destAccId || '';
+            }
             document.getElementById('note').value = t.note || '';
             const typeBtn = document.querySelector(`.type-btn[data-type="${t.type}"]`);
             if (typeBtn) typeBtn.classList.add('active');
+            
+            toggleTransferFields(t.type);
+            
             const hasDiscountCheck = document.getElementById('hasDiscount');
             const discountFields = document.getElementById('discountFields');
             if (t.discount) {
@@ -3273,6 +3354,9 @@ window.editTransaction = (id) => {
             }
         }
     } else {
+        const gastoBtn = document.querySelector('.type-btn[data-type="gasto"]');
+        if (gastoBtn) gastoBtn.classList.add('active');
+        toggleTransferFields('gasto');
         document.getElementById('amount').value = '';
         document.getElementById('note').value = '';
         document.getElementById('hasDiscount').checked = false;
@@ -3696,16 +3780,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const date = document.getElementById('date').value;
         const catId = document.getElementById('categoryId').value;
         const accId = document.getElementById('accId').value;
+        const destAccId = document.getElementById('destAccId')?.value;
         const note = document.getElementById('note').value;
+        
+        if (type === 'transferencia') {
+            if (accId === destAccId) { showToast("La billetera destino debe ser distinta", "error"); return; }
+        } else {
+            if (!catId) { showToast("Selecciona una categoría", "error"); return; }
+        }
+        
         const hasDiscount = document.getElementById('hasDiscount')?.checked;
         let discountPercent=0, discountFixed=0, originalAmount=amount;
-        if (hasDiscount) {
+        if (hasDiscount && type !== 'transferencia') {
             const discountType = document.querySelector('input[name="discountType"]:checked')?.value;
             const discountVal = parseFloat(document.getElementById('discountValue').value);
             if (discountType === 'percent') { discountPercent = discountVal; amount = originalAmount * (1 - discountVal/100); }
             else if (discountType === 'fixed') { discountFixed = discountVal; amount = originalAmount - discountVal; }
         }
-        const txData = { amount, originalAmount, catId, accId, note, type, date: new Date(date).toISOString(), discount: hasDiscount, discountPercent, discountFixed, currency: 'ARS' };
+        
+        const txData = { 
+            amount, 
+            originalAmount, 
+            catId: type === 'transferencia' ? null : catId, 
+            accId, 
+            destAccId: type === 'transferencia' ? destAccId : null,
+            note, 
+            type, 
+            date: new Date(date).toISOString(), 
+            discount: type === 'transferencia' ? false : hasDiscount, 
+            discountPercent: type === 'transferencia' ? 0 : discountPercent, 
+            discountFixed: type === 'transferencia' ? 0 : discountFixed, 
+            currency: 'ARS' 
+        };
         if (id) updateTransaction(id, txData);
         else addTransaction(txData);
         closeModal();
@@ -3814,6 +3920,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('type-btn')) {
             document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
+            toggleTransferFields(e.target.dataset.type);
         }
     });
     document.body.addEventListener('change', (e) => {

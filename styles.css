@@ -358,6 +358,12 @@ body {
     color: #ef4444;
 }
 
+.transaction-icon.transfer {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+
 .transaction-details {
     flex: 1;
 }

@@ -494,11 +494,12 @@
             <div class="modal-header"><h3 id="modalTitle">Nueva transacción</h3><button class="modal-close">&times;</button></div>
             <form id="transactionForm">
                 <input type="hidden" id="transactionId">
-                <div class="form-group"><label>Tipo</label><div class="type-toggle"><button type="button" class="type-btn active" data-type="gasto">Gasto</button><button type="button" class="type-btn" data-type="ingreso">Ingreso</button></div></div>
+                <div class="form-group"><label>Tipo</label><div class="type-toggle"><button type="button" class="type-btn active" data-type="gasto">Gasto</button><button type="button" class="type-btn" data-type="ingreso">Ingreso</button><button type="button" class="type-btn" data-type="transferencia">Transferencia</button></div></div>
                 <div class="form-group"><label>Monto</label><input type="number" id="amount" step="0.01" required placeholder="0.00"></div>
                 <div class="form-group"><label>Fecha</label><input type="date" id="date" required></div>
-                <div class="form-group"><label>Categoría</label><select id="categoryId" required></select></div>
-                <div class="form-group"><label>Billetera</label><select id="accId" required></select></div>
+                <div class="form-group" id="categoryFormGroup"><label>Categoría</label><select id="categoryId" required></select></div>
+                <div class="form-group"><label id="accIdLabel">Billetera</label><select id="accId" required></select></div>
+                <div class="form-group" id="destAccGroup" style="display:none;"><label>Billetera Destino</label><select id="destAccId"></select></div>
                 <div class="form-group"><label>Nota / Comentario</label><textarea id="note" rows="2" placeholder="Opcional"></textarea></div>
                 <div class="form-group discount-group"><label><input type="checkbox" id="hasDiscount"> Aplicar descuento</label><div id="discountFields" style="display:none;"><div class="discount-type"><label><input type="radio" name="discountType" value="percent" checked> Porcentaje (%)</label><label><input type="radio" name="discountType" value="fixed"> Monto fijo</label></div><input type="number" id="discountValue" step="0.01" placeholder="Valor del descuento"></div></div>
                 <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
