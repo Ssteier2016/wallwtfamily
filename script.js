@@ -3,7 +3,7 @@
 // ============================================
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ============================================
 // CONFIGURACIÓN DE FIREBASE (TUS DATOS)
@@ -33,26 +33,62 @@ try {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUser = user;
-            // syncEnabled permanece false hasta que se carguen los datos de la nube
+            
             const userNameSpan = document.getElementById('userName');
             const loginBtn = document.getElementById('loginGoogleBtn');
             const logoutBtn = document.getElementById('logoutBtn');
             if (userNameSpan) userNameSpan.innerText = user.displayName || user.email;
             if (loginBtn) loginBtn.style.display = 'none';
             if (logoutBtn) logoutBtn.style.display = 'flex';
-            // Cargar datos de la nube ANTES de habilitar el sync,
-            // evita sobreescribir Firestore con datos vacíos de localStorage
-            await loadFromCloud();
+            
+            // Ocultar barrera de login
+            const barrier = document.getElementById('loginBarrier');
+            if (barrier) barrier.style.display = 'none';
+            
+            // Verificar si en su propio perfil de la nube hay guardado una vinculación de billetera compartida
+            try {
+                const myDocRef = doc(db, 'users', user.uid);
+                const myDocSnap = await getDoc(myDocRef);
+                if (myDocSnap.exists()) {
+                    const data = myDocSnap.data();
+                    if (data.sharedWalletOwnerId) {
+                        localStorage.setItem('shared_wallet_owner_id', data.sharedWalletOwnerId);
+                    } else {
+                        localStorage.removeItem('shared_wallet_owner_id');
+                    }
+                    if (data.activeShareCode) {
+                        localStorage.setItem('active_share_code', data.activeShareCode);
+                    } else {
+                        localStorage.removeItem('active_share_code');
+                    }
+                }
+            } catch(e) {
+                console.error("Error al cargar configuración de wallet compartida:", e);
+            }
+            
+            updateLeaveWalletBtnVisibility();
+            setupWalletListener();
             syncEnabled = true;
         } else {
             currentUser = null;
             syncEnabled = false;
+            
             const userNameSpan = document.getElementById('userName');
             const loginBtn = document.getElementById('loginGoogleBtn');
             const logoutBtn = document.getElementById('logoutBtn');
             if (userNameSpan) userNameSpan.innerText = '';
             if (loginBtn) loginBtn.style.display = 'flex';
             if (logoutBtn) logoutBtn.style.display = 'none';
+            
+            // Mostrar barrera de login
+            const barrier = document.getElementById('loginBarrier');
+            if (barrier) barrier.style.display = 'flex';
+            
+            // Cancelar listener
+            if (unsubscribeWalletListener) {
+                unsubscribeWalletListener();
+                unsubscribeWalletListener = null;
+            }
         }
     });
 
@@ -361,53 +397,131 @@ function recalculateAllBalances() {
 }
 
 // ========== SINCRONIZACIÓN CON FIRESTORE ==========
-async function syncToCloud() {
-    if (!firebaseEnabled || !currentUser || !syncEnabled) return;
-    try {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        await setDoc(userDocRef, {
-            transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
-            solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-            cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons,
-            lastUpdated: new Date().toISOString()
-        }); // Sin merge:true — reemplaza el doc completo para que los borrados se propaguen correctamente
-    } catch (e) { console.error(e); }
+// ========== HELPERS DE WALLET COMPARTIDA ==========
+let unsubscribeWalletListener = null;
+
+function getActiveWalletUserId() {
+    const sharedId = localStorage.getItem('shared_wallet_owner_id');
+    return sharedId || (currentUser ? currentUser.uid : null);
 }
 
-async function loadFromCloud() {
+function updateLeaveWalletBtnVisibility() {
+    const leaveBtn = document.getElementById('leaveWalletBtn');
+    if (leaveBtn) {
+        const hasSharedWallet = localStorage.getItem('shared_wallet_owner_id') !== null;
+        leaveBtn.style.display = hasSharedWallet ? 'flex' : 'none';
+    }
+}
+
+async function leaveSharedWallet() {
+    if (!firebaseEnabled) return;
+    localStorage.removeItem('shared_wallet_owner_id');
+    localStorage.removeItem('active_share_code');
+    
+    if (currentUser) {
+        try {
+            const myDocRef = doc(db, 'users', currentUser.uid);
+            await setDoc(myDocRef, {
+                sharedWalletOwnerId: null,
+                activeShareCode: null
+            }, { merge: true });
+        } catch(e) {
+            console.error("Error al limpiar configuración en la nube:", e);
+        }
+    }
+    
+    updateLeaveWalletBtnVisibility();
+    setupWalletListener();
+    showToast("Volviste a tu wallet personal", "success");
+}
+
+function setupWalletListener() {
+    if (unsubscribeWalletListener) {
+        unsubscribeWalletListener();
+        unsubscribeWalletListener = null;
+    }
+    
     if (!firebaseEnabled || !currentUser) return;
-    try {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const docSnap = await getDoc(userDocRef);
+    
+    const targetUserId = getActiveWalletUserId();
+    const userDocRef = doc(db, 'users', targetUserId);
+    
+    unsubscribeWalletListener = onSnapshot(userDocRef, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
+            
+            // Evitamos sobreescribir si la escritura pendiente proviene de esta pestaña
+            if (docSnap.metadata.hasPendingWrites) return;
+            
             transactions = Array.isArray(data.transactions) ? data.transactions : [];
             accounts = Array.isArray(data.accounts) ? data.accounts : [];
             categories = Array.isArray(data.categories) ? data.categories : [];
             budgets = Array.isArray(data.budgets) ? data.budgets : [];
             goals = Array.isArray(data.goals) ? data.goals : [];
-        btcHoldings = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
-        btcHistory = Array.isArray(data.btcHistory) ? data.btcHistory : [];
-        solHoldings = typeof data.solHoldings === 'number' ? data.solHoldings : 0;
-        solHistory = Array.isArray(data.solHistory) ? data.solHistory : [];
-        bnbHoldings = typeof data.bnbHoldings === 'number' ? data.bnbHoldings : 0;
-        bnbHistory = Array.isArray(data.bnbHistory) ? data.bnbHistory : [];
-        nexoHoldings = typeof data.nexoHoldings === 'number' ? data.nexoHoldings : 0;
-        nexoHistory = Array.isArray(data.nexoHistory) ? data.nexoHistory : [];
-        cedearHoldings = typeof data.cedearHoldings === 'object' ? data.cedearHoldings : {};
-        cedearPrices = typeof data.cedearPrices === 'object' ? data.cedearPrices : {};
-        cedearCustomImages = typeof data.cedearCustomImages === 'object' ? data.cedearCustomImages : {};
-        cedearMeta = typeof data.cedearMeta === 'object' ? data.cedearMeta : {};
-        cedearBrokerNotes = typeof data.cedearBrokerNotes === 'object' ? data.cedearBrokerNotes : {};
-        cedearDeleted = typeof data.cedearDeleted === 'object' ? data.cedearDeleted : {};
-        cryptoIcons = typeof data.cryptoIcons === 'object' ? data.cryptoIcons : {};
-        setTimeout(applyAllCryptoIcons, 100); // aplicar iconos tras cargar la nube
+            btcHoldings = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
+            btcHistory = Array.isArray(data.btcHistory) ? data.btcHistory : [];
+            solHoldings = typeof data.solHoldings === 'number' ? data.solHoldings : 0;
+            solHistory = Array.isArray(data.solHistory) ? data.solHistory : [];
+            bnbHoldings = typeof data.bnbHoldings === 'number' ? data.bnbHoldings : 0;
+            bnbHistory = Array.isArray(data.bnbHistory) ? data.bnbHistory : [];
+            nexoHoldings = typeof data.nexoHoldings === 'number' ? data.nexoHoldings : 0;
+            nexoHistory = Array.isArray(data.nexoHistory) ? data.nexoHistory : [];
+            cedearHoldings = typeof data.cedearHoldings === 'object' ? data.cedearHoldings : {};
+            cedearPrices = typeof data.cedearPrices === 'object' ? data.cedearPrices : {};
+            cedearCustomImages = typeof data.cedearCustomImages === 'object' ? data.cedearCustomImages : {};
+            cedearMeta = typeof data.cedearMeta === 'object' ? data.cedearMeta : {};
+            cedearBrokerNotes = typeof data.cedearBrokerNotes === 'object' ? data.cedearBrokerNotes : {};
+            cedearDeleted = typeof data.cedearDeleted === 'object' ? data.cedearDeleted : {};
+            cryptoIcons = typeof data.cryptoIcons === 'object' ? data.cryptoIcons : {};
+            
+            setTimeout(applyAllCryptoIcons, 100);
             recalculateAllBalances();
             saveToLocalStorage();
             refreshAllViews();
-            showToast("Datos cargados desde la nube", "success");
+            
+            showToast("Datos sincronizados en tiempo real", "success");
+        } else {
+            if (targetUserId === currentUser.uid) {
+                transactions = [];
+                accounts = JSON.parse(JSON.stringify(defaultAccounts));
+                categories = JSON.parse(JSON.stringify(defaultCategories));
+                budgets = [];
+                goals = [];
+                recalculateAllBalances();
+                saveToLocalStorage();
+                refreshAllViews();
+            }
         }
-    } catch (e) { console.error(e); }
+    }, (error) => {
+        console.error("Error en el listener de tiempo real:", error);
+    });
+}
+
+// ========== SINCRONIZACIÓN CON FIRESTORE ==========
+async function syncToCloud() {
+    if (!firebaseEnabled || !currentUser || !syncEnabled) return;
+    try {
+        const targetUserId = getActiveWalletUserId();
+        const userDocRef = doc(db, 'users', targetUserId);
+        
+        const payload = {
+            transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
+            solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
+            cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        const activeShareCode = localStorage.getItem('active_share_code');
+        if (activeShareCode) {
+            payload.shareCode = activeShareCode;
+        }
+        
+        await setDoc(userDocRef, payload);
+    } catch (e) { console.error("Error al sincronizar con la nube:", e); }
+}
+
+async function loadFromCloud() {
+    setupWalletListener();
 }
 
 // ========== IMPORT/EXPORT ==========
@@ -2801,19 +2915,27 @@ async function joinWithCode(code) {
         const ownerId = codeDoc.data().ownerId;
         const ownerDoc = await getDoc(doc(db, 'users', ownerId));
         if (!ownerDoc.exists()) { showToast("No se encontró la wallet", "error"); return; }
-        const data = ownerDoc.data();
-        transactions  = Array.isArray(data.transactions)  ? data.transactions  : [];
-        accounts      = Array.isArray(data.accounts)      ? data.accounts      : [];
-        categories    = Array.isArray(data.categories)    ? data.categories    : [];
-        budgets       = Array.isArray(data.budgets)       ? data.budgets       : [];
-        goals         = Array.isArray(data.goals)         ? data.goals         : [];
-        btcHoldings   = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
-        btcHistory    = Array.isArray(data.btcHistory)    ? data.btcHistory    : [];
-        recalculateAllBalances();
-        saveToLocalStorage();
-        await syncToCloud();
-        refreshAllViews();
-        showToast("✅ Wallet importada con éxito", "success");
+        
+        // Guardar la vinculación en localStorage
+        localStorage.setItem('shared_wallet_owner_id', ownerId);
+        localStorage.setItem('active_share_code', clean);
+        
+        // Guardar la vinculación en nuestro propio perfil de la nube
+        try {
+            const myDocRef = doc(db, 'users', currentUser.uid);
+            await setDoc(myDocRef, {
+                sharedWalletOwnerId: ownerId,
+                activeShareCode: clean
+            }, { merge: true });
+        } catch(err) {
+            console.error("Error al guardar preferencia de wallet compartida:", err);
+        }
+        
+        // Configurar el listener de tiempo real y actualizar interfaz
+        updateLeaveWalletBtnVisibility();
+        setupWalletListener();
+        
+        showToast("✅ Te has unido a la wallet en tiempo real", "success");
     } catch(e) {
         console.error(e);
         showToast("Error al unirse. Verificá que no tenés un bloqueador de anuncios activo.", "error");
@@ -3000,17 +3122,8 @@ async function backupToGoogleSheets() {
 async function loginWithGoogle() {
     if (!firebaseEnabled) { showToast("Firebase no configurado", "error"); return; }
     try {
-        const result = await signInWithPopup(auth, googleProvider);
-        currentUser = result.user;
-        const userNameSpan = document.getElementById('userName');
-        const loginBtn = document.getElementById('loginGoogleBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (userNameSpan) userNameSpan.innerText = currentUser.displayName || currentUser.email;
-        if (loginBtn) loginBtn.style.display = 'none';
-        if (logoutBtn) logoutBtn.style.display = 'flex';
-        syncEnabled = true;
-        await loadFromCloud();
-        showToast(`Bienvenido ${currentUser.displayName}`, "success");
+        await signInWithPopup(auth, googleProvider);
+        // El resto del flujo de login se maneja automáticamente en onAuthStateChanged
     } catch(e) { showToast("Error en login", "error"); console.error(e); }
 }
 
@@ -3019,12 +3132,23 @@ async function logout() {
     await signOut(auth);
     currentUser = null;
     syncEnabled = false;
+    
+    if (unsubscribeWalletListener) {
+        unsubscribeWalletListener();
+        unsubscribeWalletListener = null;
+    }
+    
+    localStorage.removeItem('shared_wallet_owner_id');
+    localStorage.removeItem('active_share_code');
+    updateLeaveWalletBtnVisibility();
+    
     const userNameSpan = document.getElementById('userName');
     const loginBtn = document.getElementById('loginGoogleBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     if (userNameSpan) userNameSpan.innerText = '';
     if (loginBtn) loginBtn.style.display = 'flex';
     if (logoutBtn) logoutBtn.style.display = 'none';
+    
     initializeData();
     refreshAllViews();
     showToast("Sesión cerrada", "success");
@@ -3408,6 +3532,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('exportBackupBtn')?.addEventListener('click', exportToJSON);
     document.getElementById('backupSheetsBtn')?.addEventListener('click', backupToGoogleSheets);
     document.getElementById('shareWalletBtn')?.addEventListener('click', () => generateShareCode());
+    document.getElementById('leaveWalletBtn')?.addEventListener('click', leaveSharedWallet);
+    document.getElementById('barrierLoginBtn')?.addEventListener('click', loginWithGoogle);
 
     document.getElementById('joinWalletBtn')?.addEventListener('click', () => {
         const input = document.getElementById('joinCodeInput');

@@ -48,6 +48,7 @@
                 </button>
                 <button class="btn-import" id="shareWalletBtn" style="background:#e2e8f0; margin-top:5px;"><i class="fas fa-share-alt"></i> Compartir Wallet</button>
                 <button class="btn-import" id="joinWalletBtn" style="background:#e2e8f0;"><i class="fas fa-code-branch"></i> Unirse con código</button>
+                <button class="btn-import" id="leaveWalletBtn" style="background:#fee2e2; color:#ef4444; border:1px solid #fecaca; display:none; margin-top:5px;"><i class="fas fa-sign-out-alt"></i> Salir de Wallet Compartida</button>
             </div>
         </aside>
 
@@ -772,6 +773,17 @@
     </div>
 
     <div id="toast" class="toast"></div>
+
+    <div id="loginBarrier" class="login-barrier" style="display:none;">
+        <div class="login-box">
+            <i class="fas fa-wallet login-logo"></i>
+            <h2>Mis Finanzas</h2>
+            <p>Sincronización en la nube activa. Por favor, iniciá sesión con tu cuenta de Google para acceder a tus datos en tiempo real y evitar pérdidas.</p>
+            <button id="barrierLoginBtn" class="btn-login-google">
+                <i class="fab fa-google"></i> Iniciar sesión con Google
+            </button>
+        </div>
+    </div>
 
     <script type="module" src="script.js"></script>
 </body>
