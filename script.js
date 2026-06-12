@@ -490,14 +490,34 @@ function setupWalletListener() {
             showToast("Datos sincronizados en tiempo real", "success");
         } else {
             if (targetUserId === currentUser.uid) {
-                transactions = [];
-                accounts = JSON.parse(JSON.stringify(defaultAccounts));
-                categories = JSON.parse(JSON.stringify(defaultCategories));
-                budgets = [];
-                goals = [];
-                recalculateAllBalances();
-                saveToLocalStorage();
-                refreshAllViews();
+                // Si el documento de mi propia wallet no existe en la nube, pero tengo datos locales, los subimos a la nube
+                const hasLocalData = (transactions && transactions.length > 0) ||
+                                     (btcHoldings > 0) ||
+                                     (solHoldings > 0) ||
+                                     (bnbHoldings > 0) ||
+                                     (nexoHoldings > 0) ||
+                                     (cedearHoldings && Object.keys(cedearHoldings).length > 0) ||
+                                     (accounts && accounts.length > 1) ||
+                                     (budgets && budgets.length > 0) ||
+                                     (goals && goals.length > 0);
+                                     
+                if (hasLocalData) {
+                    console.log("El documento no existe en la nube, pero hay datos locales. Subiendo datos locales...");
+                    syncEnabled = true;
+                    syncToCloud();
+                } else {
+                    // Si realmente no hay nada local, inicializamos con defaults limpios
+                    transactions = [];
+                    accounts = JSON.parse(JSON.stringify(defaultAccounts));
+                    categories = JSON.parse(JSON.stringify(defaultCategories));
+                    budgets = [];
+                    goals = [];
+                    recalculateAllBalances();
+                    saveToLocalStorage();
+                    refreshAllViews();
+                }
+            } else {
+                console.warn("La wallet compartida no existe en la nube:", targetUserId);
             }
         }
     }, (error) => {
