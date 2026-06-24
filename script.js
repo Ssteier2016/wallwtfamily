@@ -103,6 +103,8 @@ let accounts = [];
 let categories = [];
 let budgets = [];
 let goals = [];
+let usdHoldings = 0;
+let usdHistory = [];
 let btcHoldings = 0;
 let btcHistory = [];
 let solHoldings = 0;
@@ -288,6 +290,8 @@ function initializeData() {
         const savedCategories = localStorage.getItem('finanzas_categories');
         const savedBudgets = localStorage.getItem('finanzas_budgets');
         const savedGoals = localStorage.getItem('finanzas_goals');
+        const savedUsd = localStorage.getItem('finanzas_usd');
+        const savedUsdHistory = localStorage.getItem('finanzas_usd_history');
         const savedBtc = localStorage.getItem('finanzas_btc');
         const savedBtcHistory = localStorage.getItem('finanzas_btc_history');
         const savedSol = localStorage.getItem('finanzas_sol');
@@ -309,6 +313,8 @@ function initializeData() {
         categories = savedCategories ? JSON.parse(savedCategories) : JSON.parse(JSON.stringify(defaultCategories));
         budgets = savedBudgets ? JSON.parse(savedBudgets) : [];
         goals = savedGoals ? JSON.parse(savedGoals) : [];
+          usdHoldings = savedUsd ? parseFloat(savedUsd) : 0;
+          usdHistory = savedUsdHistory ? JSON.parse(savedUsdHistory) : [];
           btcHoldings = savedBtc ? parseFloat(savedBtc) : 0;
           btcHistory = savedBtcHistory ? JSON.parse(savedBtcHistory) : [];
           solHoldings = savedSol ? parseFloat(savedSol) : 0;
@@ -330,6 +336,7 @@ function initializeData() {
         if (!Array.isArray(categories)) categories = JSON.parse(JSON.stringify(defaultCategories));
         if (!Array.isArray(budgets)) budgets = [];
         if (!Array.isArray(goals)) goals = [];
+          if (!Array.isArray(usdHistory)) usdHistory = [];
           if (!Array.isArray(btcHistory)) btcHistory = [];
           if (!Array.isArray(solHistory)) solHistory = [];
           if (!Array.isArray(bnbHistory)) bnbHistory = [];
@@ -346,6 +353,8 @@ function initializeData() {
         categories = JSON.parse(JSON.stringify(defaultCategories));
         budgets = [];
         goals = [];
+        usdHoldings = 0;
+        usdHistory = [];
         btcHoldings = 0;
         btcHistory = [];
         solHoldings = 0;
@@ -365,6 +374,8 @@ function saveToLocalStorage() {
     localStorage.setItem('finanzas_categories', JSON.stringify(categories));
     localStorage.setItem('finanzas_budgets', JSON.stringify(budgets));
     localStorage.setItem('finanzas_goals', JSON.stringify(goals));
+    localStorage.setItem('finanzas_usd', usdHoldings.toString());
+    localStorage.setItem('finanzas_usd_history', JSON.stringify(usdHistory));
     localStorage.setItem('finanzas_btc', btcHoldings.toString());
     localStorage.setItem('finanzas_btc_history', JSON.stringify(btcHistory));
     localStorage.setItem('finanzas_sol', solHoldings.toString());
@@ -466,6 +477,8 @@ function setupWalletListener() {
             categories = Array.isArray(data.categories) ? data.categories : [];
             budgets = Array.isArray(data.budgets) ? data.budgets : [];
             goals = Array.isArray(data.goals) ? data.goals : [];
+            usdHoldings = typeof data.usdHoldings === 'number' ? data.usdHoldings : 0;
+            usdHistory = Array.isArray(data.usdHistory) ? data.usdHistory : [];
             btcHoldings = typeof data.btcHoldings === 'number' ? data.btcHoldings : 0;
             btcHistory = Array.isArray(data.btcHistory) ? data.btcHistory : [];
             solHoldings = typeof data.solHoldings === 'number' ? data.solHoldings : 0;
@@ -492,6 +505,7 @@ function setupWalletListener() {
             if (targetUserId === currentUser.uid) {
                 // Si el documento de mi propia wallet no existe en la nube, pero tengo datos locales, los subimos a la nube
                 const hasLocalData = (transactions && transactions.length > 0) ||
+                                     (usdHoldings > 0) ||
                                      (btcHoldings > 0) ||
                                      (solHoldings > 0) ||
                                      (bnbHoldings > 0) ||
@@ -512,6 +526,16 @@ function setupWalletListener() {
                     categories = JSON.parse(JSON.stringify(defaultCategories));
                     budgets = [];
                     goals = [];
+                    usdHoldings = 0;
+                    usdHistory = [];
+                    btcHoldings = 0;
+                    btcHistory = [];
+                    solHoldings = 0;
+                    solHistory = [];
+                    bnbHoldings = 0;
+                    bnbHistory = [];
+                    nexoHoldings = 0;
+                    nexoHistory = [];
                     recalculateAllBalances();
                     saveToLocalStorage();
                     refreshAllViews();
@@ -533,7 +557,7 @@ async function syncToCloud() {
         const userDocRef = doc(db, 'users', targetUserId);
         
         const payload = {
-            transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
+            transactions, accounts, categories, budgets, goals, usdHoldings, usdHistory, btcHoldings, btcHistory,
             solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
             cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons,
             lastUpdated: new Date().toISOString()
@@ -561,6 +585,8 @@ function importFromJSON(jsonData) {
         if (data.categories && Array.isArray(data.categories)) categories = data.categories;
         if (data.budgets && Array.isArray(data.budgets)) budgets = data.budgets;
         if (data.goals && Array.isArray(data.goals)) goals = data.goals;
+        if (typeof data.usdHoldings === 'number') usdHoldings = data.usdHoldings;
+        if (data.usdHistory && Array.isArray(data.usdHistory)) usdHistory = data.usdHistory;
         if (typeof data.btcHoldings === 'number') btcHoldings = data.btcHoldings;
         if (data.btcHistory && Array.isArray(data.btcHistory)) btcHistory = data.btcHistory;
         if (typeof data.solHoldings === 'number') solHoldings = data.solHoldings;
@@ -590,7 +616,7 @@ function importFromJSON(jsonData) {
 
 function exportToJSON() {
     const exportData = {
-        transactions, accounts, categories, budgets, goals, btcHoldings, btcHistory,
+        transactions, accounts, categories, budgets, goals, usdHoldings, usdHistory, btcHoldings, btcHistory,
         solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
         cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons, exportDate: new Date().toISOString()
     };
@@ -957,6 +983,18 @@ function renderDashboardDolar() {
     const ventaElem = document.getElementById('dolarBlueVenta');
     if (compraElem) compraElem.innerText = `$${dolarBlueCompra.toFixed(2)}`;
     if (ventaElem) ventaElem.innerText = `$${dolarBlueVenta.toFixed(2)}`;
+
+    const mepPriceElem = document.getElementById('usdMEPPrice');
+    const bluePriceElem = document.getElementById('usdBluePrice');
+    if (mepPriceElem) mepPriceElem.innerText = `$${dolarMEP.toFixed(2)}`;
+    if (bluePriceElem) bluePriceElem.innerText = `$${dolarBlueVenta.toFixed(2)}`;
+
+    const totalUSDHoldingsElem = document.getElementById('totalUSDHoldings');
+    const usdValueUSDElem = document.getElementById('usdValueUSD');
+    const usdValueARSElem = document.getElementById('usdValueARS');
+    if (totalUSDHoldingsElem) totalUSDHoldingsElem.innerText = usdHoldings.toFixed(2);
+    if (usdValueUSDElem) usdValueUSDElem.innerText = formatCurrencyUSD(usdHoldings);
+    if (usdValueARSElem) usdValueARSElem.innerText = formatCurrency(usdHoldings * dolarMEP);
 }
 
 // ========== PRECIO CEDEAR via Alpha Vantage ==========
@@ -987,6 +1025,51 @@ function getCedearPriceARS(ticker) {
 
 function formatCurrencyUSD(value) {
     return 'USD ' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
+
+function addUSD(amount) {
+    if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
+    usdHoldings += amount;
+    const newMove = {
+        id: 'usd-' + Date.now(),
+        amount: amount,
+        type: 'compra',
+        date: new Date().toISOString(),
+        priceUSD: 1,
+        priceARS: dolarMEP,
+        note: '',
+        imageUrl: ''
+    };
+    usdHistory.push(newMove);
+    saveToLocalStorage();
+    syncToCloud();
+    renderCapitalView();
+    renderUSDHistory();
+    renderDashboardDolar();
+    showToast(`${amount} USD agregado`, "success");
+}
+
+function removeUSD(amount) {
+    if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
+    if (usdHoldings < amount) { showToast("No tienes suficientes USD", "error"); return; }
+    usdHoldings -= amount;
+    const newMove = {
+        id: 'usd-' + Date.now(),
+        amount: amount,
+        type: 'venta',
+        date: new Date().toISOString(),
+        priceUSD: 1,
+        priceARS: dolarMEP,
+        note: '',
+        imageUrl: ''
+    };
+    usdHistory.push(newMove);
+    saveToLocalStorage();
+    syncToCloud();
+    renderCapitalView();
+    renderUSDHistory();
+    renderDashboardDolar();
+    showToast(`${amount} USD restado`, "success");
 }
 
 function addBTC(amount) {
@@ -1159,6 +1242,46 @@ function removeNEXO(amount) {
     updateBTCPrice();
     renderNEXOHistory();
     showToast(`${amount} NEXO restado`, "success");
+}
+
+function updateUsdMovement(id, updatedData) {
+    const index = usdHistory.findIndex(m => m.id === id);
+    if (index === -1) return;
+    const oldMove = usdHistory[index];
+    const oldAmount = oldMove.amount;
+    const oldType = oldMove.type;
+    const newAmount = updatedData.amount;
+    const newType = updatedData.type;
+
+    if (oldType === 'compra') usdHoldings -= oldAmount;
+    else usdHoldings += oldAmount;
+
+    if (newType === 'compra') usdHoldings += newAmount;
+    else usdHoldings -= newAmount;
+
+    usdHistory[index] = { ...oldMove, ...updatedData, amount: parseFloat(newAmount) };
+    saveToLocalStorage();
+    syncToCloud();
+    renderCapitalView();
+    renderUSDHistory();
+    renderDashboardDolar();
+    refreshAllViews();
+    showToast('Movimiento USD actualizado', 'success');
+}
+
+function deleteUsdMovement(id) {
+    const move = usdHistory.find(m => m.id === id);
+    if (!move) return;
+    if (move.type === 'compra') usdHoldings -= move.amount;
+    else usdHoldings += move.amount;
+    usdHistory = usdHistory.filter(m => m.id !== id);
+    saveToLocalStorage();
+    syncToCloud();
+    renderCapitalView();
+    renderUSDHistory();
+    renderDashboardDolar();
+    refreshAllViews();
+    showToast('Movimiento USD eliminado', 'success');
 }
 
 function updateBtcMovement(id, updatedData) {
@@ -1501,6 +1624,61 @@ function renderBNBHistory() {
     }).join('');
 }
 
+function renderUSDHistory() {
+    const container = document.getElementById('usdHistoryList');
+    if (!container) return;
+    if (!Array.isArray(usdHistory) || usdHistory.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin movimientos de USD</div>';
+        return;
+    }
+    const sorted = [...usdHistory].sort((a,b) => new Date(a.date) - new Date(b.date));
+    let runningBalance = 0;
+    const items = [];
+    for (const move of sorted) {
+        if (move.type === 'compra') runningBalance += move.amount;
+        else runningBalance -= move.amount;
+        items.push({ ...move, runningBalance });
+    }
+    items.reverse();
+    container.innerHTML = items.map(m => {
+        const moveUSD = m.amount;
+        const moveARS = m.amount * (m.priceARS || dolarMEP);
+        const balUSD  = m.runningBalance;
+        const balARS  = m.runningBalance * (m.priceARS || dolarMEP);
+        const sign    = m.type === 'compra' ? '+' : '-';
+        const amtColor = m.type === 'compra' ? '#10b981' : '#ef4444';
+        return `
+        <div class="transaction-item" style="flex-wrap:wrap; gap:6px; align-items:center;">
+            <div class="transaction-info" style="flex:1; min-width:160px;">
+                <div class="transaction-icon ${m.type === 'compra' ? 'ingreso' : 'gasto'}">
+                    ${m.imageUrl ? `<img src="${m.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<i class="fas ${m.type === 'compra' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>`}
+                </div>
+                <div class="transaction-details">
+                    <div class="transaction-description">${m.type === 'compra' ? 'Ingreso de USD' : 'Egreso de USD'}${m.note ? `: ${escapeHtml(m.note)}` : ''}</div>
+                    <div class="transaction-meta">${formatDate(m.date)}</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:stretch; flex-shrink:0; gap:0;">
+                <div style="text-align:right; padding:0 12px; border-right:1px solid #e2e8f0; min-width:115px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Movimiento</div>
+                    <div style="font-weight:700; font-size:0.88rem; color:${amtColor};">${sign} ${m.amount.toFixed(2)} USD</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(moveARS)}</div>
+                </div>
+                <div style="text-align:right; padding:0 12px; min-width:130px;">
+                    <div style="font-size:0.67rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Saldo</div>
+                    <div style="font-weight:600; font-size:0.88rem;">${m.runningBalance.toFixed(2)} USD</div>
+                    <div style="font-size:0.75rem; color:#475569;">${formatCurrency(balARS)}</div>
+                </div>
+            </div>
+            <div class="transaction-actions">
+                <button class="btn-edit" onclick="editUsdMovement('${m.id}')" ><i class="fas fa-pencil-alt"></i></button>
+                <button class="btn-delete" onclick="deleteUsdMovementHandler('${m.id}')" ><i class="fas fa-trash-alt"></i></button>
+            </div>
+        </div>
+    `;
+    }).join('');
+}
+
 function renderNEXOHistory() {
     const container = document.getElementById('nexoHistoryList');
     if (!container) return;
@@ -1557,6 +1735,21 @@ function renderNEXOHistory() {
     `;
     }).join('');
 }
+
+window.editUsdMovement = (id) => {
+    const move = usdHistory.find(m => m.id === id);
+    if (!move) return;
+    document.getElementById('editUsdId').value = move.id;
+    document.getElementById('editUsdAmount').value = move.amount;
+    document.getElementById('editUsdType').value = move.type;
+    document.getElementById('editUsdNote').value = move.note || '';
+    document.getElementById('editUsdImageUrl').value = move.imageUrl || '';
+    openModal('editUsdModal');
+};
+
+window.deleteUsdMovementHandler = (id) => {
+    if (confirm('¿Eliminar este movimiento USD?')) deleteUsdMovement(id);
+};
 
 window.editBtcMovement = (id) => {
     const move = btcHistory.find(m => m.id === id);
@@ -1737,6 +1930,7 @@ function refreshAllViews() {
     renderSOLHistory();
     renderBNBHistory();
     renderNEXOHistory();
+    renderUSDHistory();
     renderCapitalView();
     updateFilters();
     updateBudgetMonthSelector();
@@ -1749,6 +1943,13 @@ function refreshAllViews() {
 }
 
 function renderCapitalView() {
+    const capitalUSD = usdHoldings;
+    const capitalUSDUSD = capitalUSD;
+    const capitalUSDARS = capitalUSD * dolarMEP;
+    if (document.getElementById('capitalUSD')) document.getElementById('capitalUSD').innerHTML = `${capitalUSD.toFixed(2)} USD`;
+    if (document.getElementById('capitalUSDUSD')) document.getElementById('capitalUSDUSD').innerHTML = formatCurrencyUSD(capitalUSDUSD);
+    if (document.getElementById('capitalUSDARS')) document.getElementById('capitalUSDARS').innerHTML = formatCurrency(capitalUSDARS);
+
     const capitalBTC = btcHoldings;
     const capitalBTCUSD = capitalBTC * currentBTCPriceUSD;
     const capitalBTCARS = capitalBTC * currentBTCPriceARS;
@@ -1927,12 +2128,13 @@ function renderCapitalView() {
     if (document.getElementById('totalAccionesARS')) document.getElementById('totalAccionesARS').innerHTML = formatCurrency(totalAccionesARS);
 
     // Totales generales
-    const totalUSD = capitalBTCUSD + capitalSOLUSD + capitalBNBUSD + capitalNEXOUSD + (totalBilleterasARS / dolarMEP) + totalCedearUSD + totalAccionesUSD;
-    const totalARS = capitalBTCARS + capitalSOLARS + capitalBNBARS + capitalNEXOARS + totalBilleterasARS + totalCedearARS + totalAccionesARS;
+    const totalUSD = capitalUSDUSD + capitalBTCUSD + capitalSOLUSD + capitalBNBUSD + capitalNEXOUSD + (totalBilleterasARS / dolarMEP) + totalCedearUSD + totalAccionesUSD;
+    const totalARS = capitalUSDARS + capitalBTCARS + capitalSOLARS + capitalBNBARS + capitalNEXOARS + totalBilleterasARS + totalCedearARS + totalAccionesARS;
     document.getElementById('totalWealth').innerHTML = formatCurrency(totalARS);
     document.getElementById('totalWealthUSD').innerHTML = formatCurrencyUSD(totalUSD);
 
     // Filtros de visibilidad
+    const usdSection = document.getElementById('capitalUSDSection');
     const btcSection = document.getElementById('capitalBTCSection');
     const solSection = document.getElementById('capitalSOLSection');
     const bnbSection = document.getElementById('capitalBNBSection');
@@ -1940,6 +2142,7 @@ function renderCapitalView() {
     const billeterasSection = document.getElementById('capitalBilleterasSection');
     const cedearSection = document.getElementById('capitalCedearSection');
 
+    if (usdSection) usdSection.style.display = (activeFilter === 'all' || activeFilter === 'usd') ? '' : 'none';
     if (btcSection) btcSection.style.display = (activeFilter === 'all' || activeFilter === 'btc') ? '' : 'none';
     if (solSection) solSection.style.display = (activeFilter === 'all' || activeFilter === 'sol') ? '' : 'none';
     if (bnbSection) bnbSection.style.display = (activeFilter === 'all' || activeFilter === 'bnb') ? '' : 'none';
@@ -3459,7 +3662,24 @@ window.editGoal = (id) => {
 window.editCedear = (key) => {
     const { ticker, broker } = cedearFromKey(key);
     document.getElementById('cedearTicker').value = key;
-    if (document.getElementById('cedearBroker')) document.getElementById('cedearBroker').value = broker || '';
+    
+    const brokerSelect = document.getElementById('cedearBroker');
+    const customGroup = document.getElementById('cedearBrokerCustomGroup');
+    const customInput = document.getElementById('cedearBrokerCustom');
+    
+    if (brokerSelect) {
+        const standardValues = ["", "IOL", "PPI", "Balanz", "Bull Market", "Cocos", "Comafi", "BIND"];
+        if (broker && !standardValues.includes(broker)) {
+            brokerSelect.value = 'Otro';
+            if (customInput) customInput.value = broker;
+            if (customGroup) customGroup.style.display = 'block';
+        } else {
+            brokerSelect.value = broker || '';
+            if (customInput) customInput.value = '';
+            if (customGroup) customGroup.style.display = 'none';
+        }
+    }
+    
     document.getElementById('cedearAmount').value = cedearHoldings[key] || 0;
     document.getElementById('cedearPrice').value = cedearPrices[ticker] || '';
     document.getElementById('cedearImageUrl').value = cedearCustomImages[key] || cedearCustomImages[ticker] || '';
@@ -3588,12 +3808,17 @@ function switchView(viewId) {
         capital: 'Capital',
         expenses:  'Gastos',
         discounts: 'Reintegros y Descuentos',
+        dolar: 'Dólar (USD)',
     };
     const titleElem = document.getElementById('currentViewTitle');
     if (titleElem) titleElem.innerText = titles[viewId] || 'Dashboard';
     if (viewId === 'expenses')  renderExpenseReport();
     if (viewId === 'capital')   renderCapitalView();
     if (viewId === 'discounts') renderDiscountsSection(discountPeriod);
+    if (viewId === 'dolar') {
+        renderUSDHistory();
+        renderDashboardDolar();
+    }
 }
 
 // ========== EVENT LISTENERS ==========
@@ -3673,11 +3898,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('removeBnbBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('bnbAmount')?.value); if(amt>0) removeBNB(amt); });
     document.getElementById('addNexoBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('nexoAmount')?.value); if(amt>0) addNEXO(amt); });
     document.getElementById('removeNexoBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('nexoAmount')?.value); if(amt>0) removeNEXO(amt); });
+    document.getElementById('addUsdBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('usdAmount')?.value); if(amt>0) addUSD(amt); });
+    document.getElementById('removeUsdBtn')?.addEventListener('click', () => { const amt = parseFloat(document.getElementById('usdAmount')?.value); if(amt>0) removeUSD(amt); });
     document.getElementById('addCedearBtn')?.addEventListener('click', () => {
         document.getElementById('cedearTicker').value = '';
         document.getElementById('cedearAmount').value = '';
         document.getElementById('cedearPrice').value = '';
         if (document.getElementById('cedearBroker')) document.getElementById('cedearBroker').value = '';
+        if (document.getElementById('cedearBrokerCustom')) document.getElementById('cedearBrokerCustom').value = '';
+        if (document.getElementById('cedearBrokerCustomGroup')) document.getElementById('cedearBrokerCustomGroup').style.display = 'none';
         if (document.getElementById('cedearImageUrl')) document.getElementById('cedearImageUrl').value = '';
         if (document.getElementById('cedearImagePreview')) document.getElementById('cedearImagePreview').innerHTML = '';
         updateCedearSelectOptions();
@@ -3705,12 +3934,23 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCedearSelectOptions();
     });
 
+    // Listener para broker personalizado (Otro)
+    document.getElementById('cedearBroker')?.addEventListener('change', () => {
+        const val = document.getElementById('cedearBroker').value;
+        const customGroup = document.getElementById('cedearBrokerCustomGroup');
+        if (customGroup) {
+            customGroup.style.display = val === 'Otro' ? 'block' : 'none';
+        }
+    });
+
     // Boton Agregar Accion AR
     document.getElementById('addAccionBtn')?.addEventListener('click', () => {
         document.getElementById('cedearTicker').value = '';
         document.getElementById('cedearAmount').value = '';
         document.getElementById('cedearPrice').value = '';
         if (document.getElementById('cedearBroker')) document.getElementById('cedearBroker').value = '';
+        if (document.getElementById('cedearBrokerCustom')) document.getElementById('cedearBrokerCustom').value = '';
+        if (document.getElementById('cedearBrokerCustomGroup')) document.getElementById('cedearBrokerCustomGroup').style.display = 'none';
         if (document.getElementById('cedearImageUrl')) document.getElementById('cedearImageUrl').value = '';
         if (document.getElementById('cedearImagePreview')) document.getElementById('cedearImagePreview').innerHTML = '';
         if (document.getElementById('cedearType')) {
@@ -3892,44 +4132,58 @@ document.addEventListener('DOMContentLoaded', () => {
         updateBtcMovement(id, { amount, type, note, imageUrl });
         closeModal();
     });
+    document.getElementById('editUsdForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editUsdId').value;
+        const amount = parseFloat(document.getElementById('editUsdAmount').value);
+        const type = document.getElementById('editUsdType').value;
+        const note = document.getElementById('editUsdNote').value;
+        const imageUrl = document.getElementById('editUsdImageUrl').value;
+        if (isNaN(amount) || amount <= 0) { showToast("Cantidad inválida", "error"); return; }
+        updateUsdMovement(id, { amount, type, note, imageUrl });
+        closeModal();
+    });
     document.getElementById('cedearForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const ticker = document.getElementById('cedearSelect').value;
-    const broker = document.getElementById('cedearBroker')?.value || '';
-    const amount = parseFloat(document.getElementById('cedearAmount').value);
-    const manualPrice = parseFloat(document.getElementById('cedearPrice').value);
-    const imageUrlInput = document.getElementById('cedearImageUrl').value;
-    const imageFileInput = document.getElementById('cedearImageFile');
-    const cedearType = document.getElementById('cedearType').value;
+        e.preventDefault();
+        const ticker = document.getElementById('cedearSelect').value;
+        let broker = document.getElementById('cedearBroker')?.value || '';
+        if (broker === 'Otro') {
+            broker = document.getElementById('cedearBrokerCustom')?.value.trim() || 'Otro';
+        }
+        const amount = parseFloat(document.getElementById('cedearAmount').value);
+        const manualPrice = parseFloat(document.getElementById('cedearPrice').value);
+        const imageUrlInput = document.getElementById('cedearImageUrl').value;
+        const imageFileInput = document.getElementById('cedearImageFile');
+        const cedearType = document.getElementById('cedearType').value;
 
-    if (!ticker) { showToast("Selecciona un CEDEAR", "error"); return; }
-    if (isNaN(amount) || amount < 0) { showToast("Cantidad inválida", "error"); return; }
+        if (!ticker) { showToast("Selecciona un CEDEAR", "error"); return; }
+        if (isNaN(amount) || amount < 0) { showToast("Cantidad inválida", "error"); return; }
 
-    showToast(`Obteniendo precio de ${ticker}...`, 'success');
+        showToast(`Obteniendo precio de ${ticker}...`, 'success');
 
-    // Si tiene precio manual lo usamos, si no buscamos en Alpha Vantage (no para acciones AR)
-    if (!isNaN(manualPrice) && manualPrice > 0) {
-        cedearPrices[ticker] = manualPrice;
-    } else if (cedearType !== 'accion_arg') {
-        await fetchCedearPrice(ticker);
-    } else {
-        showToast('Ingresa el precio en ARS manualmente', 'success');
-    }
+        // Si tiene precio manual lo usamos, si no buscamos en Alpha Vantage (no para acciones AR)
+        if (!isNaN(manualPrice) && manualPrice > 0) {
+            cedearPrices[ticker] = manualPrice;
+        } else if (cedearType !== 'accion_arg') {
+            await fetchCedearPrice(ticker);
+        } else {
+            showToast('Ingresa el precio en ARS manualmente', 'success');
+        }
 
-    const key = cedearKey(ticker, broker);
+        const key = cedearKey(ticker, broker);
 
-    // Imagen: preferir archivo subido, luego URL manual
-    if (imageFileInput && imageFileInput.files && imageFileInput.files[0]) {
-        const b64 = await fileToBase64(imageFileInput.files[0]);
-        cedearCustomImages[key] = b64;
-        imageFileInput.value = '';
-    } else if (imageUrlInput) {
-        cedearCustomImages[key] = imageUrlInput;
-    }
+        // Imagen: preferir archivo subido, luego URL manual
+        if (imageFileInput && imageFileInput.files && imageFileInput.files[0]) {
+            const b64 = await fileToBase64(imageFileInput.files[0]);
+            cedearCustomImages[key] = b64;
+            imageFileInput.value = '';
+        } else if (imageUrlInput) {
+            cedearCustomImages[key] = imageUrlInput;
+        }
 
-    addOrUpdateCedear(ticker, broker, amount, cedearType);
-    closeModal();
-});
+        addOrUpdateCedear(ticker, broker, amount, cedearType);
+        closeModal();
+    });
 
     document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', closeModal));
     window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });

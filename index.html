@@ -27,8 +27,9 @@
                 <a href="#" class="nav-item" data-view="goals"><i class="fas fa-bullseye"></i><span>Metas</span></a>
                 <a href="#" class="nav-item" data-view="calendar"><i class="fas fa-calendar-alt"></i><span>Calendario</span></a>
                 <div class="nav-group">
-                    <a href="#" class="nav-item crypto-toggle"><i class="fas fa-coins"></i><span>Crypto</span><i class="fas fa-chevron-down submenu-icon"></i></a>
+                    <a href="#" class="nav-item crypto-toggle"><i class="fas fa-coins"></i><span>Monedas/Cripto</span><i class="fas fa-chevron-down submenu-icon"></i></a>
                     <div class="submenu crypto-submenu">
+                        <a href="#" class="nav-item" data-view="dolar"><i class="fas fa-dollar-sign"></i><span>Dólar</span></a>
                         <a href="#" class="nav-item" data-view="bitcoin"><i class="fab fa-bitcoin"></i><span>Bitcoin</span></a>
                         <a href="#" class="nav-item" data-view="solana"><i class="fas fa-coins"></i><span>Solana</span></a>
                         <a href="#" class="nav-item" data-view="binance"><i class="fas fa-coins"></i><span>Binance</span></a>
@@ -143,6 +144,34 @@
                 <div class="calendar-header"><button id="prevMonth"><i class="fas fa-chevron-left"></i></button><h3 id="calendarMonthYear"></h3><button id="nextMonth"><i class="fas fa-chevron-right"></i></button></div>
                 <div class="calendar-grid" id="calendarGrid"></div>
                 <div id="dailyTransactions" style="margin-top:20px; background:white; border-radius:16px; padding:16px;"></div>
+            </div>
+
+            <!-- Dólar -->
+            <div id="dolarView" class="view">
+                <div class="view-header"><h2>Dólar (USD)</h2></div>
+                <div class="summary-cards" style="grid-template-columns:repeat(2,1fr);">
+                    <div class="card"><div class="card-icon" style="background:#0f9d5820; color:#0f9d58;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Dólar MEP (ARS)</span><span class="card-value" id="usdMEPPrice">---</span></div></div>
+                    <div class="card"><div class="card-icon" style="background:#0f9d5820; color:#0f9d58;"><i class="fas fa-dollar-sign"></i></div><div class="card-content"><span class="card-label">Dólar Blue Venta (ARS)</span><span class="card-value" id="usdBluePrice">---</span></div></div>
+                </div>
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-content">
+                        <span class="card-label">Mi cartera USD</span>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="number" id="usdAmount" step="any" placeholder="Cantidad de USD" style="flex:1;">
+                            <button id="addUsdBtn" class="btn-primary">Agregar USD</button>
+                            <button id="removeUsdBtn" class="btn-secondary">Restar USD</button>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <strong>Total USD:</strong> <span id="totalUSDHoldings">0.00</span> USD<br>
+                            <strong>Valor en USD:</strong> <span id="usdValueUSD">$0.00</span><br>
+                            <strong>Valor en ARS:</strong> <span id="usdValueARS">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-transactions">
+                    <h3>Historial de movimientos USD (saldo acumulado)</h3>
+                    <div id="usdHistoryList" class="transactions-list"></div>
+                </div>
             </div>
 
             <!-- Bitcoin -->
@@ -279,6 +308,7 @@
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <select id="capitalFilter" class="filter-select" onchange="renderCapitalView()">
                 <option value="all">Ver todo</option>
+                <option value="usd">Solo Dólar</option>
                 <option value="btc">Solo BTC</option>
                 <option value="sol">Solo SOL</option>
                 <option value="bnb">Solo BNB</option>
@@ -306,6 +336,18 @@
             <div class="card-content">
                 <span class="card-label">Patrimonio Total (USD)</span>
                 <span class="card-value" id="totalWealthUSD">$0.00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección Dólar (USD) -->
+    <div id="capitalUSDSection" class="card" style="margin-bottom:20px;">
+        <div class="card-content">
+            <span class="card-label" style="font-weight:700; font-size:1rem;">💵 Dólar (USD)</span>
+            <div class="summary-cards" style="grid-template-columns: repeat(3,1fr); margin-top:10px;">
+                <div><span class="card-label">Cantidad</span><div class="card-value" id="capitalUSD" style="font-size:1rem;">0 USD</div></div>
+                <div><span class="card-label">Valor USD</span><div class="card-value" id="capitalUSDUSD" style="font-size:1rem;">$0.00</div></div>
+                <div><span class="card-label">Valor ARS</span><div class="card-value" id="capitalUSDARS" style="font-size:1rem;">$0.00</div></div>
             </div>
         </div>
     </div>
@@ -567,6 +609,21 @@
         </div>
     </div>
 
+    <!-- Modal para editar movimiento USD -->
+    <div id="editUsdModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar movimiento USD</h3><button class="modal-close">&times;</button></div>
+            <form id="editUsdForm">
+                <input type="hidden" id="editUsdId">
+                <div class="form-group"><label>Cantidad (USD)</label><input type="number" id="editUsdAmount" step="any" required></div>
+                <div class="form-group"><label>Tipo</label><select id="editUsdType"><option value="compra">Compra</option><option value="venta">Venta</option></select></div>
+                <div class="form-group"><label>Comentario</label><textarea id="editUsdNote" rows="2" placeholder="Opcional"></textarea></div>
+                <div class="form-group"><label>Imagen URL (opcional)</label><input type="url" id="editUsdImageUrl" placeholder="https://ejemplo.com/imagen.png"></div>
+                <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal para editar movimiento BTC -->
     <div id="editBtcModal" class="modal">
         <div class="modal-content">
@@ -653,6 +710,10 @@
                     <option value="BIND">BIND</option>
                     <option value="Otro">Otro</option>
                 </select>
+            </div>
+            <div class="form-group" id="cedearBrokerCustomGroup" style="display:none;">
+                <label>Nombre del Broker personalizado</label>
+                <input type="text" id="cedearBrokerCustom" placeholder="Ej: PPI Cuenta 2, Balanz USD" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.9rem; background:#fff;">
             </div>
             <div class="form-group">
                 <label id="cedearSelectLabel">Ticker / CEDEAR</label>
