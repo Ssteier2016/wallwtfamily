@@ -2573,8 +2573,16 @@ function renderBudgetsList() {
                     <div class="budget-amount">Presupuestado: ${formatCurrency(b.amount)} | Gastado: ${formatCurrency(spent)}</div>
                     <div class="budget-progress"><div class="budget-progress-bar ${exceeded ? 'exceeded' : ''}" style="width: ${Math.min(percent,100)}%"></div></div>
                     ${exceeded ? '<span style="color:#ef4444; font-size:0.75rem;">¡Superaste el presupuesto!</span>' : ''}
+                    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                        <button class="btn-secondary" style="font-size:0.78rem; padding:5px 10px; display:flex; align-items:center; gap:4px;" onclick="replicateBudgetToNextMonth('${b.id}')" title="Replicar este presupuesto al mes siguiente">
+                            <i class="fas fa-calendar-plus"></i> Replicar mes sig.
+                        </button>
+                        <button class="btn-primary" style="font-size:0.78rem; padding:5px 10px; display:flex; align-items:center; gap:4px;" onclick="addTransactionFromBudget('${b.categoryId}', ${b.amount})" title="Agregar gasto autocompletado para esta categoría">
+                            <i class="fas fa-plus"></i> Agregar gasto
+                        </button>
+                    </div>
                 </div>
-                <div class="account-actions">
+                <div class="account-actions" style="align-self: flex-start; margin-top: 4px;">
                     <button class="btn-edit" onclick="editBudget('${b.id}')"><i class="fas fa-pencil-alt"></i></button>
                     <button class="btn-delete" onclick="deleteBudget('${b.id}')"><i class="fas fa-trash"></i></button>
                 </div>
@@ -3507,6 +3515,68 @@ window.editBudget = (id) => {
     document.getElementById('budgetAmount').value = budget.amount;
     document.getElementById('budgetMonth').value = budget.month;
     openModal('budgetModal');
+};
+
+window.replicateBudgetToNextMonth = (budgetId) => {
+    const budget = budgets.find(b => b.id === budgetId);
+    if (!budget) return;
+    
+    // Calcular el mes siguiente
+    const [year, month] = budget.month.split('-').map(Number);
+    let nextMonthVal = month + 1;
+    let nextYearVal = year;
+    if (nextMonthVal > 12) {
+        nextMonthVal = 1;
+        nextYearVal += 1;
+    }
+    const nextMonthStr = `${nextYearVal}-${String(nextMonthVal).padStart(2, '0')}`;
+    
+    const existing = budgets.find(b => b.categoryId === budget.categoryId && b.month === nextMonthStr);
+    if (existing) {
+        const cat = categories.find(c => c.id === budget.categoryId);
+        const catName = cat ? cat.name : 'esta categoría';
+        if (confirm(`Ya existe un presupuesto para "${catName}" en el siguiente mes (${nextMonthStr}). ¿Deseas actualizar su monto a ${formatCurrency(budget.amount)}?`)) {
+            updateBudget(existing.id, { amount: budget.amount });
+        }
+    } else {
+        addBudget({
+            categoryId: budget.categoryId,
+            amount: budget.amount,
+            month: nextMonthStr
+        });
+    }
+};
+
+window.addTransactionFromBudget = (categoryId, amount) => {
+    // Abrir formulario de transacción autocompletado como "gasto"
+    const modal = document.getElementById('transactionModal');
+    if (!modal) return;
+    
+    updateFilters();
+    
+    document.getElementById('modalTitle').innerText = 'Nueva transacción';
+    document.getElementById('transactionId').value = '';
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    const gastoBtn = document.querySelector('.type-btn[data-type="gasto"]');
+    if (gastoBtn) gastoBtn.classList.add('active');
+    toggleTransferFields('gasto');
+    
+    document.getElementById('amount').value = amount;
+    document.getElementById('categoryId').value = categoryId || '';
+    document.getElementById('note').value = '';
+    
+    if (accounts.length > 0) {
+        document.getElementById('accId').value = accounts[0].id;
+    }
+    
+    const hasDiscountCheck = document.getElementById('hasDiscount');
+    const discountFields = document.getElementById('discountFields');
+    if (hasDiscountCheck) hasDiscountCheck.checked = false;
+    if (discountFields) discountFields.style.display = 'none';
+    
+    openModal('transactionModal');
 };
 
 function toggleTransferFields(type) {
