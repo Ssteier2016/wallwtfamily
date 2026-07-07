@@ -123,6 +123,15 @@ let cedearMeta = {}; // { 'TSLA|IOL': { broker: 'IOL', type: 'cedear' } }
 let cedearBrokerNotes = {}; // { 'IOL': 'cuenta comitente #123' }
 let cedearDeleted = {}; // { 'TSLA|IOL': { amount, price, broker, type, imageUrl, deletedAt } }
 let cryptoIcons = {}; // { 'SOL': 'url', 'BNB': 'url', 'NEXO': 'url' }
+let trades = [];
+let tradeChartInstance = null;
+let currentTradeCalendarDate = new Date();
+let chartTypes = {
+    expense: 'doughnut',
+    income: 'doughnut',
+    budget: 'doughnut',
+    expenseReport: 'doughnut'
+};
 
 // Helpers clave compuesta TICKER|BROKER
 function cedearKey(ticker, broker) { return broker ? ticker + '|' + broker : ticker; }
@@ -307,6 +316,7 @@ function initializeData() {
         const savedBrokerNotes = localStorage.getItem('finanzas_broker_notes');
         const savedDeleted = localStorage.getItem('finanzas_cedear_deleted');
         const savedCryptoIcons = localStorage.getItem('finanzas_crypto_icons');
+        const savedTrades = localStorage.getItem('finanzas_trades');
 
         transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
         accounts = savedAccounts ? JSON.parse(savedAccounts) : JSON.parse(JSON.stringify(defaultAccounts));
@@ -330,6 +340,7 @@ function initializeData() {
           cedearBrokerNotes = savedBrokerNotes ? JSON.parse(savedBrokerNotes) : {};
           cedearDeleted = savedDeleted ? JSON.parse(savedDeleted) : {};
           cryptoIcons = savedCryptoIcons ? JSON.parse(savedCryptoIcons) : {};
+          trades = savedTrades ? JSON.parse(savedTrades) : [];
 
         if (!Array.isArray(transactions)) transactions = [];
         if (!Array.isArray(accounts)) accounts = JSON.parse(JSON.stringify(defaultAccounts));
@@ -341,6 +352,7 @@ function initializeData() {
           if (!Array.isArray(solHistory)) solHistory = [];
           if (!Array.isArray(bnbHistory)) bnbHistory = [];
           if (!Array.isArray(nexoHistory)) nexoHistory = [];
+          if (!Array.isArray(trades)) trades = [];
           if (typeof cedearHoldings !== 'object') cedearHoldings = {};
           if (typeof cedearPrices !== 'object') cedearPrices = {};
 
@@ -363,6 +375,7 @@ function initializeData() {
         bnbHistory = [];
         nexoHoldings = 0;
         nexoHistory = [];
+        trades = [];
         recalculateAllBalances();
         saveToLocalStorage();
     }
@@ -391,6 +404,7 @@ function saveToLocalStorage() {
     localStorage.setItem('finanzas_broker_notes', JSON.stringify(cedearBrokerNotes));
     localStorage.setItem('finanzas_cedear_deleted', JSON.stringify(cedearDeleted));
     localStorage.setItem('finanzas_crypto_icons', JSON.stringify(cryptoIcons));
+    localStorage.setItem('finanzas_trades', JSON.stringify(trades));
 }
 
 function recalculateAllBalances() {
@@ -494,6 +508,7 @@ function setupWalletListener() {
             cedearBrokerNotes = typeof data.cedearBrokerNotes === 'object' ? data.cedearBrokerNotes : {};
             cedearDeleted = typeof data.cedearDeleted === 'object' ? data.cedearDeleted : {};
             cryptoIcons = typeof data.cryptoIcons === 'object' ? data.cryptoIcons : {};
+            trades = Array.isArray(data.trades) ? data.trades : [];
             
             setTimeout(applyAllCryptoIcons, 100);
             recalculateAllBalances();
@@ -560,6 +575,7 @@ async function syncToCloud() {
             transactions, accounts, categories, budgets, goals, usdHoldings, usdHistory, btcHoldings, btcHistory,
             solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
             cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons,
+            trades,
             lastUpdated: new Date().toISOString()
         };
         
@@ -602,6 +618,7 @@ function importFromJSON(jsonData) {
         if (data.cedearBrokerNotes && typeof data.cedearBrokerNotes === 'object') cedearBrokerNotes = data.cedearBrokerNotes;
         if (data.cedearDeleted && typeof data.cedearDeleted === 'object') cedearDeleted = data.cedearDeleted;
         if (data.cryptoIcons && typeof data.cryptoIcons === 'object') cryptoIcons = data.cryptoIcons;
+        if (data.trades && Array.isArray(data.trades)) trades = data.trades;
         recalculateAllBalances();
         saveToLocalStorage();
         syncToCloud();
@@ -618,7 +635,8 @@ function exportToJSON() {
     const exportData = {
         transactions, accounts, categories, budgets, goals, usdHoldings, usdHistory, btcHoldings, btcHistory,
         solHoldings, solHistory, bnbHoldings, bnbHistory, nexoHoldings, nexoHistory,
-        cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons, exportDate: new Date().toISOString()
+        cedearHoldings, cedearPrices, cedearCustomImages, cedearMeta, cedearBrokerNotes, cedearDeleted, cryptoIcons,
+        trades, exportDate: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1932,6 +1950,7 @@ function refreshAllViews() {
     renderNEXOHistory();
     renderUSDHistory();
     renderCapitalView();
+    renderTradeView();
     updateFilters();
     updateBudgetMonthSelector();
     renderExpenseReport();
@@ -2290,14 +2309,17 @@ function updateExpenseChart() {
     const data = Object.values(expensesByCat);
     const colors = labels.map((_, i) => `hsl(${(i * 360 / Math.max(labels.length,1)) % 360}, 70%, 60%)`);
     if (currentCharts.expense) currentCharts.expense.destroy();
+    
+    const isBar = chartTypes.expense === 'bar';
     currentCharts.expense = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+        type: isBar ? 'bar' : 'doughnut',
+        data: { labels, datasets: [{ label: 'Gastos', data, backgroundColor: colors, borderWidth: 0, borderRadius: isBar ? 6 : 0 }] },
         options: {
+            indexAxis: isBar ? 'y' : undefined,
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'bottom' },
+                legend: { display: !isBar, position: 'bottom' },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -2309,7 +2331,10 @@ function updateExpenseChart() {
                         }
                     }
                 }
-            }
+            },
+            scales: isBar ? {
+                x: { beginAtZero: true, ticks: { callback: (value) => formatCurrency(value) } }
+            } : {}
         }
     });
 }
@@ -2330,14 +2355,17 @@ function updateIncomeChart() {
     const data = Object.values(incomesByCat);
     const colors = labels.map((_, i) => `hsl(${(i * 360 / Math.max(labels.length,1)) % 360}, 70%, 60%)`);
     if (currentCharts.income) currentCharts.income.destroy();
+    
+    const isBar = chartTypes.income === 'bar';
     currentCharts.income = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+        type: isBar ? 'bar' : 'doughnut',
+        data: { labels, datasets: [{ label: 'Ingresos', data, backgroundColor: colors, borderWidth: 0, borderRadius: isBar ? 6 : 0 }] },
         options: {
+            indexAxis: isBar ? 'y' : undefined,
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'bottom' },
+                legend: { display: !isBar, position: 'bottom' },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -2349,7 +2377,10 @@ function updateIncomeChart() {
                         }
                     }
                 }
-            }
+            },
+            scales: isBar ? {
+                x: { beginAtZero: true, ticks: { callback: (value) => formatCurrency(value) } }
+            } : {}
         }
     });
 }
@@ -2613,13 +2644,15 @@ function renderBudgetPieChart() {
     });
     const data = monthly.map(b => b.amount);
     const colors = labels.map((_, i) => `hsl(${(i * 360 / Math.max(labels.length,1)) % 360}, 70%, 60%)`);
+    const isBar = chartTypes.budget === 'bar';
     window.budgetPieChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+        type: isBar ? 'bar' : 'doughnut',
+        data: { labels, datasets: [{ label: 'Presupuestado', data, backgroundColor: colors, borderWidth: 0, borderRadius: isBar ? 6 : 0 }] },
         options: {
+            indexAxis: isBar ? 'y' : undefined,
             responsive: true,
             plugins: {
-                legend: { position: 'bottom' },
+                legend: { display: !isBar, position: 'bottom' },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -2631,7 +2664,10 @@ function renderBudgetPieChart() {
                         }
                     }
                 }
-            }
+            },
+            scales: isBar ? {
+                x: { beginAtZero: true, ticks: { callback: (value) => formatCurrency(value) } }
+            } : {}
         }
     });
 }
@@ -3051,13 +3087,15 @@ function renderExpenseReport() {
         if (ctx) {
             if (window.expenseChartInstance) window.expenseChartInstance.destroy();
             const colors = labels.map((_, i) => `hsl(${(i * 360 / Math.max(labels.length,1)) % 360}, 70%, 60%)`);
+            const isBar = chartTypes.expenseReport === 'bar';
             window.expenseChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+                type: isBar ? 'bar' : 'doughnut',
+                data: { labels, datasets: [{ label: 'Monto', data, backgroundColor: colors, borderWidth: 0, borderRadius: isBar ? 6 : 0 }] },
                 options: {
+                    indexAxis: isBar ? 'y' : undefined,
                     responsive: true,
                     plugins: {
-                        legend: { position: 'bottom' },
+                        legend: { display: !isBar, position: 'bottom' },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -3069,7 +3107,10 @@ function renderExpenseReport() {
                                 }
                             }
                         }
-                    }
+                    },
+                    scales: isBar ? {
+                        x: { beginAtZero: true, ticks: { callback: (value) => formatCurrency(value) } }
+                    } : {}
                 }
             });
         }
@@ -3879,11 +3920,13 @@ function switchView(viewId) {
         expenses:  'Gastos',
         discounts: 'Reintegros y Descuentos',
         dolar: 'Dólar (USD)',
+        trade: 'Trading de Activos',
     };
     const titleElem = document.getElementById('currentViewTitle');
     if (titleElem) titleElem.innerText = titles[viewId] || 'Dashboard';
     if (viewId === 'expenses')  renderExpenseReport();
     if (viewId === 'capital')   renderCapitalView();
+    if (viewId === 'trade')     renderTradeView();
     if (viewId === 'discounts') renderDiscountsSection(discountPeriod);
     if (viewId === 'dolar') {
         renderUSDHistory();
@@ -4255,6 +4298,50 @@ document.addEventListener('DOMContentLoaded', () => {
         closeModal();
     });
 
+    document.getElementById('prevTradeMonth')?.addEventListener('click', () => { currentTradeCalendarDate.setMonth(currentTradeCalendarDate.getMonth()-1); renderTradeView(); });
+    document.getElementById('nextTradeMonth')?.addEventListener('click', () => { currentTradeCalendarDate.setMonth(currentTradeCalendarDate.getMonth()+1); renderTradeView(); });
+    
+    document.getElementById('tradeForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = document.getElementById('tradeId').value;
+        const asset = document.getElementById('tradeAsset').value.toUpperCase().trim();
+        const type = document.getElementById('tradeType').value;
+        const amount = parseFloat(document.getElementById('tradeAmount').value);
+        const price = parseFloat(document.getElementById('tradePrice').value);
+        const currency = document.getElementById('tradeCurrency').value;
+        const date = document.getElementById('tradeDate').value;
+        const note = document.getElementById('tradeNote').value;
+        
+        if (!asset || isNaN(amount) || amount <= 0 || isNaN(price) || price <= 0) {
+            showToast('Completa todos los campos con valores válidos', 'error');
+            return;
+        }
+        
+        const tradeData = {
+            id: id || 'trade-' + Date.now(),
+            asset,
+            type,
+            amount,
+            price,
+            currency,
+            date: new Date(date + 'T00:00:00').toISOString(),
+            note
+        };
+        
+        if (id) {
+            const index = trades.findIndex(t => t.id === id);
+            if (index !== -1) trades[index] = tradeData;
+        } else {
+            trades.push(tradeData);
+        }
+        
+        saveToLocalStorage();
+        syncToCloud();
+        renderTradeView();
+        closeModal();
+        showToast(id ? 'Trade actualizado' : 'Trade registrado', 'success');
+    });
+
     document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', closeModal));
     window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });
     document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
@@ -4402,6 +4489,335 @@ document.addEventListener('DOMContentLoaded', () => {
         const opening = !panel.classList.contains('open');
         panel.classList.toggle('open');
         if (opening) updateDisplay();
+    };
+
+    // ========== CHART TYPE TOGGLES ==========
+    window.toggleChartType = (chartName) => {
+        chartTypes[chartName] = chartTypes[chartName] === 'doughnut' ? 'bar' : 'doughnut';
+        if (chartName === 'expense') updateExpenseChart();
+        else if (chartName === 'income') updateIncomeChart();
+        else if (chartName === 'budget') renderBudgetPieChart();
+        else if (chartName === 'expenseReport') renderExpenseReport();
+    };
+
+    // ========== LOGICA DE TRADING ==========
+    function calculateTradesPnL() {
+        const sortedTrades = [...trades].sort((a,b) => new Date(a.date) - new Date(b.date));
+        const assetState = {};
+        const tradeResults = [];
+        
+        let totalPurchasesARS = 0;
+        let totalSalesARS = 0;
+        let totalPurchasesUSD = 0;
+        let totalSalesUSD = 0;
+        let totalRealizedPnLARS = 0;
+        let totalRealizedPnLUSD = 0;
+        
+        for (const trade of sortedTrades) {
+            const qty = parseFloat(trade.amount) || 0;
+            const price = parseFloat(trade.price) || 0;
+            const currency = trade.currency || 'USD';
+            const isBuy = trade.type === 'buy';
+            const asset = trade.asset.toUpperCase().trim();
+            
+            let tradeVal = qty * price;
+            let tradeValARS = currency === 'ARS' ? tradeVal : tradeVal * dolarMEP;
+            let tradeValUSD = currency === 'USD' ? tradeVal : (dolarMEP > 0 ? tradeVal / dolarMEP : 0);
+            
+            if (isBuy) {
+                if (currency === 'ARS') {
+                    totalPurchasesARS += tradeVal;
+                    totalPurchasesUSD += tradeValUSD;
+                } else {
+                    totalPurchasesUSD += tradeVal;
+                    totalPurchasesARS += tradeValARS;
+                }
+            } else {
+                if (currency === 'ARS') {
+                    totalSalesARS += tradeVal;
+                    totalSalesUSD += tradeValUSD;
+                } else {
+                    totalSalesUSD += tradeVal;
+                    totalSalesARS += tradeValARS;
+                }
+            }
+            
+            if (!assetState[asset]) {
+                assetState[asset] = { qty: 0, totalCost: 0, currency: currency };
+            }
+            
+            const state = assetState[asset];
+            
+            let realizedPnL = 0;
+            let realizedPnLARS = 0;
+            let realizedPnLUSD = 0;
+            
+            if (isBuy) {
+                state.qty += qty;
+                state.totalCost += tradeVal;
+            } else {
+                // Sell: realized PnL based on WAC
+                const avgPrice = state.qty > 0 ? (state.totalCost / state.qty) : 0;
+                realizedPnL = (price - avgPrice) * qty;
+                
+                if (currency === 'ARS') {
+                    realizedPnLARS = realizedPnL;
+                    realizedPnLUSD = dolarMEP > 0 ? realizedPnL / dolarMEP : 0;
+                } else {
+                    realizedPnLUSD = realizedPnL;
+                    realizedPnLARS = realizedPnL * dolarMEP;
+                }
+                
+                totalRealizedPnLARS += realizedPnLARS;
+                totalRealizedPnLUSD += realizedPnLUSD;
+                
+                // update holdings
+                state.qty = Math.max(0, state.qty - qty);
+                state.totalCost = state.qty * avgPrice;
+            }
+            
+            tradeResults.push({
+                ...trade,
+                realizedPnL,
+                realizedPnLARS,
+                realizedPnLUSD,
+                avgBuyPrice: state.qty > 0 ? (state.totalCost / state.qty) : 0
+            });
+        }
+        
+        return {
+            tradeResults,
+            totalPurchasesARS,
+            totalSalesARS,
+            totalPurchasesUSD,
+            totalSalesUSD,
+            totalRealizedPnLARS,
+            totalRealizedPnLUSD
+        };
+    }
+
+    function renderTradeView() {
+        const {
+            tradeResults,
+            totalPurchasesARS,
+            totalSalesARS,
+            totalPurchasesUSD,
+            totalSalesUSD,
+            totalRealizedPnLARS,
+            totalRealizedPnLUSD
+        } = calculateTradesPnL();
+        
+        if (document.getElementById('tradePurchases')) {
+            document.getElementById('tradePurchases').innerText = `${formatCurrencyUSD(totalPurchasesUSD)} | ${formatCurrency(totalPurchasesARS)}`;
+        }
+        if (document.getElementById('tradeSales')) {
+            document.getElementById('tradeSales').innerText = `${formatCurrencyUSD(totalSalesUSD)} | ${formatCurrency(totalSalesARS)}`;
+        }
+        const pnlElem = document.getElementById('tradePnL');
+        if (pnlElem) {
+            pnlElem.innerText = `${totalRealizedPnLUSD >= 0 ? '+' : ''}${formatCurrencyUSD(totalRealizedPnLUSD)} | ${totalRealizedPnLARS >= 0 ? '+' : ''}${formatCurrency(totalRealizedPnLARS)}`;
+            pnlElem.style.color = totalRealizedPnLUSD >= 0 ? '#10b981' : '#ef4444';
+        }
+        
+        renderTradeLineChart(tradeResults);
+        renderTradeCalendar(tradeResults);
+        renderTradeHistoryTable(tradeResults);
+    }
+    window.renderTradeView = renderTradeView;
+
+    function renderTradeLineChart(tradeResults) {
+        const ctx = document.getElementById('tradeLineChart')?.getContext('2d');
+        if (!ctx) return;
+        
+        if (tradeChartInstance) {
+            tradeChartInstance.destroy();
+            tradeChartInstance = null;
+        }
+        
+        if (tradeResults.length === 0) {
+            return;
+        }
+        
+        // Group realized P&L USD by date (YYYY-MM-DD)
+        const pnlByDate = {};
+        tradeResults.forEach(r => {
+            const dateStr = r.date.split('T')[0];
+            if (r.type === 'sell') {
+                pnlByDate[dateStr] = (pnlByDate[dateStr] || 0) + r.realizedPnLUSD;
+            }
+        });
+        
+        const sortedDates = Object.keys(pnlByDate).sort();
+        
+        if (sortedDates.length === 0) {
+            const firstTradeDate = tradeResults[0].date.split('T')[0];
+            sortedDates.push(firstTradeDate);
+            pnlByDate[firstTradeDate] = 0;
+        }
+        
+        let cumulative = 0;
+        const dataPoints = [];
+        
+        sortedDates.forEach(date => {
+            cumulative += pnlByDate[date];
+            dataPoints.push(cumulative);
+        });
+        
+        tradeChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sortedDates,
+                datasets: [{
+                    label: 'PnL Realizado Acumulado (USD)',
+                    data: dataPoints,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: (value) => '$' + value.toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderTradeCalendar(tradeResults) {
+        const year = currentTradeCalendarDate.getFullYear();
+        const month = currentTradeCalendarDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const startDay = firstDay.getDay();
+        const daysInMonth = new Date(year, month+1, 0).getDate();
+        const grid = document.getElementById('tradeCalendarGrid');
+        if (!grid) return;
+        
+        let html = '<div class="calendar-day-header">Dom</div><div class="calendar-day-header">Lun</div><div class="calendar-day-header">Mar</div><div class="calendar-day-header">Mié</div><div class="calendar-day-header">Jue</div><div class="calendar-day-header">Vie</div><div class="calendar-day-header">Sáb</div>';
+        for (let i=0; i<startDay; i++) html += '<div class="calendar-day empty"></div>';
+        
+        // Group realized PnL USD by day
+        const pnlByDay = {};
+        tradeResults.forEach(r => {
+            if (r.type === 'sell') {
+                const dateStr = r.date.split('T')[0];
+                pnlByDay[dateStr] = (pnlByDay[dateStr] || 0) + r.realizedPnLUSD;
+            }
+        });
+        
+        for (let d=1; d<=daysInMonth; d++) {
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const dayPnL = pnlByDay[dateStr] || 0;
+            
+            let dayContent = `<div class="day-number">${d}</div>`;
+            let dayStyle = '';
+            if (dayPnL > 0) {
+                dayContent += `<div style="font-size:0.65rem; color:#10b981; font-weight:700;">+$${dayPnL.toFixed(0)}</div>`;
+                dayStyle = 'background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3);';
+            } else if (dayPnL < 0) {
+                dayContent += `<div style="font-size:0.65rem; color:#ef4444; font-weight:700;">-$${Math.abs(dayPnL).toFixed(0)}</div>`;
+                dayStyle = 'background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);';
+            }
+            
+            html += `<div class="calendar-day" data-date="${dateStr}" style="padding:4px; ${dayStyle}">${dayContent}</div>`;
+        }
+        grid.innerHTML = html;
+        
+        const monthYearTitle = document.getElementById('tradeCalendarMonthYear');
+        if (monthYearTitle) {
+            monthYearTitle.innerText = firstDay.toLocaleDateString('es', { month:'long', year:'numeric' });
+        }
+    }
+
+    function renderTradeHistoryTable(tradeResults) {
+        const tbody = document.getElementById('tradeHistoryBody');
+        if (!tbody) return;
+        
+        if (tradeResults.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Sin trades registrados.</td></tr>';
+            return;
+        }
+        
+        const tableData = [...tradeResults].reverse();
+        
+        tbody.innerHTML = tableData.map(t => {
+            const typeLabel = t.type === 'buy' ? '<span class="type-badge ingreso">Compra</span>' : '<span class="type-badge gasto">Venta</span>';
+            const totalVal = t.amount * t.price;
+            const totalValFormatted = t.currency === 'USD' ? formatCurrencyUSD(totalVal) : formatCurrency(totalVal);
+            
+            let pnlCell = '-';
+            if (t.type === 'sell') {
+                const pnlFormatted = t.currency === 'USD' ? formatCurrencyUSD(t.realizedPnL) : formatCurrency(t.realizedPnL);
+                const color = t.realizedPnL >= 0 ? '#10b981' : '#ef4444';
+                pnlCell = `<span style="color:${color}; font-weight:600;">${t.realizedPnL >= 0 ? '+' : ''}${pnlFormatted}</span>`;
+            }
+            
+            const priceFormatted = t.currency === 'USD' ? formatCurrencyUSD(t.price) : formatCurrency(t.price);
+            
+            return `
+                <tr>
+                    <td>${formatDate(t.date)}</td>
+                    <td><strong>${escapeHtml(t.asset)}</strong></td>
+                    <td>${typeLabel}</td>
+                    <td>${t.amount}</td>
+                    <td>${priceFormatted}</td>
+                    <td>${totalValFormatted}</td>
+                    <td>${pnlCell}</td>
+                    <td>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn-edit" onclick="editTrade('${t.id}')" style="background:none;border:none;cursor:pointer;color:#3b82f6;"><i class="fas fa-pencil-alt"></i></button>
+                            <button class="btn-delete" onclick="deleteTradeHandler('${t.id}')" style="background:none;border:none;cursor:pointer;color:#ef4444;"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    window.editTrade = (id) => {
+        const modal = document.getElementById('tradeModal');
+        if (!modal) return;
+        
+        document.getElementById('tradeModalTitle').innerText = id ? 'Editar Trade' : 'Registrar Trade';
+        document.getElementById('tradeId').value = id || '';
+        
+        if (id) {
+            const t = trades.find(tr => tr.id === id);
+            if (t) {
+                document.getElementById('tradeAsset').value = t.asset;
+                document.getElementById('tradeType').value = t.type;
+                document.getElementById('tradeAmount').value = t.amount;
+                document.getElementById('tradePrice').value = t.price;
+                document.getElementById('tradeCurrency').value = t.currency;
+                document.getElementById('tradeDate').value = t.date.split('T')[0];
+                document.getElementById('tradeNote').value = t.note || '';
+            }
+        } else {
+            document.getElementById('tradeAsset').value = '';
+            document.getElementById('tradeType').value = 'buy';
+            document.getElementById('tradeAmount').value = '';
+            document.getElementById('tradePrice').value = '';
+            document.getElementById('tradeCurrency').value = 'USD';
+            document.getElementById('tradeDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('tradeNote').value = '';
+        }
+        openModal('tradeModal');
+    };
+
+    window.deleteTradeHandler = (id) => {
+        if (confirm('¿Eliminar este registro de trade?')) {
+            trades = trades.filter(t => t.id !== id);
+            saveToLocalStorage();
+            syncToCloud();
+            renderTradeView();
+            showToast('Trade eliminado', 'success');
+        }
     };
 
     // Soporte de teclado (solo cuando la calculadora está abierta)
