@@ -2449,7 +2449,13 @@ function renderTransactionsList() {
         return;
     }
     
-    tbody.innerHTML = filtered.map(t => {
+    let netTotal = 0;
+    filtered.forEach(t => {
+        if (t.type === 'ingreso') netTotal += parseFloat(t.amount) || 0;
+        else if (t.type === 'gasto') netTotal -= parseFloat(t.amount) || 0;
+    });
+
+    let html = filtered.map(t => {
         const catImg = t.type === 'transferencia' ? '' : getCategoryImage(t.catId);
         const noteText = escapeHtml(t.note) || (t.type === 'ingreso' ? 'Ingreso' : (t.type === 'transferencia' ? 'Transferencia' : 'Gasto'));
         
@@ -2486,6 +2492,17 @@ function renderTransactionsList() {
             </tr>
         `;
     }).join('');
+
+    html += `
+        <tr style="font-weight: bold; background: #f8fafc; border-top: 2px solid #e2e8f0;">
+            <td colspan="5" style="text-align: right; padding: 12px 16px;">Total Filtrado:</td>
+            <td style="color: ${netTotal >= 0 ? '#10b981' : '#ef4444'}; padding: 12px 16px;">
+                ${netTotal >= 0 ? '+' : ''}${formatCurrency(netTotal)}
+            </td>
+            <td></td>
+        </tr>
+    `;
+    tbody.innerHTML = html;
 }
 
 function renderAccountsList() {
