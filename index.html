@@ -641,7 +641,47 @@
             <form id="transactionForm">
                 <input type="hidden" id="transactionId">
                 <div class="form-group"><label>Tipo</label><div class="type-toggle"><button type="button" class="type-btn active" data-type="gasto">Gasto</button><button type="button" class="type-btn" data-type="ingreso">Ingreso</button><button type="button" class="type-btn" data-type="transferencia">Transferencia</button></div></div>
-                <div class="form-group"><label>Monto</label><input type="number" id="amount" step="0.01" required placeholder="0.00"></div>
+                <div class="form-group">
+                    <label>Monto</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="number" id="amount" step="0.01" required placeholder="0.00" style="flex: 1;">
+                        <button type="button" id="modalCalcToggle" class="btn-secondary" style="padding: 10px; border-radius: 12px;" title="Abrir Calculadora">
+                            <i class="fas fa-calculator"></i>
+                        </button>
+                    </div>
+                    <!-- Mini calculadora integrada, oculta por defecto -->
+                    <div id="modalCalcPanel" style="display: none; margin-top: 10px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <div class="float-calc-display" style="margin-bottom: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; text-align: right;">
+                            <div id="modalCalcExpr" style="font-size: 0.75rem; color: #64748b; min-height: 1rem; font-family: monospace;"></div>
+                            <div id="modalCalcNum" style="font-size: 1.25rem; font-weight: bold; color: #1e293b; font-family: monospace;">0</div>
+                        </div>
+                        <div class="float-calc-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;" id="modalCalcGrid">
+                            <button type="button" data-mcalc="C" class="btn-secondary" style="padding: 8px; font-weight: bold; font-size: 0.9rem;">C</button>
+                            <button type="button" data-mcalc="±" class="btn-secondary" style="padding: 8px; font-weight: bold; font-size: 0.9rem;">±</button>
+                            <button type="button" data-mcalc="%" class="btn-secondary" style="padding: 8px; font-weight: bold; font-size: 0.9rem;">%</button>
+                            <button type="button" data-mcalc="÷" class="btn-primary" style="padding: 8px; font-weight: bold; font-size: 0.9rem; background: #3b82f6; color: white; border: none; border-radius: 8px;">÷</button>
+                            <button type="button" data-mcalc="7" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">7</button>
+                            <button type="button" data-mcalc="8" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">8</button>
+                            <button type="button" data-mcalc="9" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">9</button>
+                            <button type="button" data-mcalc="×" class="btn-primary" style="padding: 8px; font-weight: bold; font-size: 0.9rem; background: #3b82f6; color: white; border: none; border-radius: 8px;">×</button>
+                            <button type="button" data-mcalc="4" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">4</button>
+                            <button type="button" data-mcalc="5" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">5</button>
+                            <button type="button" data-mcalc="6" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">6</button>
+                            <button type="button" data-mcalc="−" class="btn-primary" style="padding: 8px; font-weight: bold; font-size: 0.9rem; background: #3b82f6; color: white; border: none; border-radius: 8px;">−</button>
+                            <button type="button" data-mcalc="1" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">1</button>
+                            <button type="button" data-mcalc="2" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">2</button>
+                            <button type="button" data-mcalc="3" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">3</button>
+                            <button type="button" data-mcalc="+" class="btn-primary" style="padding: 8px; font-weight: bold; font-size: 0.9rem; background: #3b82f6; color: white; border: none; border-radius: 8px;">+</button>
+                            <button type="button" data-mcalc="⌫" class="btn-secondary" style="padding: 8px; font-weight: bold; font-size: 0.9rem;">⌫</button>
+                            <button type="button" data-mcalc="0" class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">0</button>
+                            <button type="button" data-mcalc="." class="btn-secondary" style="padding: 8px; font-size: 0.9rem;">.</button>
+                            <button type="button" data-mcalc="=" class="btn-primary" style="padding: 8px; font-weight: bold; font-size: 0.9rem; background: #10b981; color: white; border: none; border-radius: 8px;">=</button>
+                        </div>
+                        <div style="margin-top: 8px; display: flex; gap: 6px;">
+                            <button type="button" id="modalCalcUseBtn" class="btn-primary" style="flex: 1; padding: 8px; font-size: 0.85rem; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">Usar resultado</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="form-group"><label>Fecha</label><input type="date" id="date" required></div>
                 <div class="form-group" id="categoryFormGroup"><label>Categoría</label><select id="categoryId" required></select></div>
                 <div class="form-group"><label id="accIdLabel">Billetera</label><select id="accId" required></select></div>

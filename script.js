@@ -4508,6 +4508,93 @@ document.addEventListener('DOMContentLoaded', () => {
         if (opening) updateDisplay();
     };
 
+    // ========== MINI CALCULADORA INTEGRADA MODAL ==========
+    let modalCalcExpr = '';
+    let modalCalcCurr = '0';
+    let modalCalcEvaled = false;
+    let modalCalcActiveOp = null;
+
+    function updateModalCalcDisplay() {
+        const exprElem = document.getElementById('modalCalcExpr');
+        const numElem = document.getElementById('modalCalcNum');
+        if (exprElem) exprElem.textContent = modalCalcExpr;
+        if (numElem) numElem.textContent = modalCalcCurr;
+    }
+
+    window.modalCalcDo = function(val) {
+        if (val === 'C') {
+            modalCalcExpr = '';
+            modalCalcCurr = '0';
+            modalCalcActiveOp = null;
+            modalCalcEvaled = false;
+        } else if (val === '⌫') {
+            if (modalCalcEvaled) {
+                modalCalcExpr = '';
+                modalCalcEvaled = false;
+            }
+            modalCalcCurr = modalCalcCurr.length > 1 ? modalCalcCurr.slice(0, -1) : '0';
+        } else if (val === '±') {
+            if (modalCalcCurr !== '0') {
+                modalCalcCurr = modalCalcCurr.startsWith('-') ? modalCalcCurr.slice(1) : '-' + modalCalcCurr;
+            }
+        } else if (val === '%') {
+            modalCalcCurr = (parseFloat(modalCalcCurr) / 100).toString();
+        } else if (['+', '−', '×', '÷'].includes(val)) {
+            if (modalCalcActiveOp && !modalCalcEvaled) {
+                window.modalCalcDo('=');
+            }
+            modalCalcExpr = modalCalcCurr + ' ' + val + ' ';
+            modalCalcActiveOp = val;
+            modalCalcEvaled = true;
+        } else if (val === '=') {
+            if (!modalCalcActiveOp) return;
+            const parts = modalCalcExpr.split(' ');
+            const num1 = parseFloat(parts[0]);
+            const num2 = parseFloat(modalCalcCurr);
+            let res = 0;
+            if (!isNaN(num1) && !isNaN(num2)) {
+                if (modalCalcActiveOp === '+') res = num1 + num2;
+                else if (modalCalcActiveOp === '−') res = num1 - num2;
+                else if (modalCalcActiveOp === '×') res = num1 * num2;
+                else if (modalCalcActiveOp === '÷') res = num2 !== 0 ? num1 / num2 : 0;
+            }
+            modalCalcExpr = modalCalcExpr + modalCalcCurr + ' =';
+            modalCalcCurr = Number(res.toFixed(8)).toString();
+            modalCalcActiveOp = null;
+            modalCalcEvaled = true;
+        } else if (val === '.') {
+            if (modalCalcEvaled) {
+                modalCalcCurr = '0.';
+                modalCalcEvaled = false;
+            } else if (!modalCalcCurr.includes('.')) {
+                modalCalcCurr += '.';
+            }
+        } else {
+            // Número
+            if (modalCalcCurr === '0' || modalCalcEvaled) {
+                modalCalcCurr = val;
+                modalCalcEvaled = false;
+            } else {
+                modalCalcCurr += val;
+            }
+        }
+        updateModalCalcDisplay();
+    };
+
+    window.toggleModalCalc = function() {
+        const panel = document.getElementById('modalCalcPanel');
+        if (!panel) return;
+        const isHidden = panel.style.display === 'none' || panel.style.display === '';
+        panel.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) {
+            modalCalcExpr = '';
+            modalCalcCurr = '0';
+            modalCalcActiveOp = null;
+            modalCalcEvaled = false;
+            updateModalCalcDisplay();
+        }
+    };
+
     // ========== CHART TYPE TOGGLES ==========
     window.toggleChartType = (chartName) => {
         chartTypes[chartName] = chartTypes[chartName] === 'doughnut' ? 'bar' : 'doughnut';
@@ -4867,6 +4954,22 @@ document.addEventListener('DOMContentLoaded', () => {
             ?.addEventListener('click', function (e) {
                 const btn = e.target.closest('[data-calc]');
                 if (btn) window.calcDo(btn.dataset.calc);
+            });
+            
+        document.getElementById('modalCalcToggle')
+            ?.addEventListener('click', window.toggleModalCalc);
+        document.getElementById('modalCalcGrid')
+            ?.addEventListener('click', function (e) {
+                const btn = e.target.closest('[data-mcalc]');
+                if (btn) window.modalCalcDo(btn.dataset.mcalc);
+            });
+        document.getElementById('modalCalcUseBtn')
+            ?.addEventListener('click', function () {
+                const val = parseFloat(modalCalcCurr);
+                if (!isNaN(val)) {
+                    document.getElementById('amount').value = val;
+                }
+                document.getElementById('modalCalcPanel').style.display = 'none';
             });
     });
 })();
