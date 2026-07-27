@@ -2638,8 +2638,19 @@ function renderBudgetsList() {
         `;
     }).join('');
     const totalBudget = monthly.reduce((sum, b) => sum + b.amount, 0);
+    const totalSpent = monthly.reduce((sum, b) => {
+        const spent = Array.isArray(transactions) ? transactions.filter(t => t.catId === b.categoryId && t.type === 'gasto' && t.date.slice(0,7) === selectedMonth).reduce((sumT, t) => sumT + parseFloat(t.amount), 0) : 0;
+        return sum + spent;
+    }, 0);
     const totalBudgetElem = document.getElementById('budgetTotalAmount');
-    if (totalBudgetElem) totalBudgetElem.innerHTML = `Total Presupuestado: ${formatCurrency(totalBudget)}`;
+    if (totalBudgetElem) {
+        totalBudgetElem.innerHTML = `
+            <div style="display: flex; justify-content: center; gap: 24px; font-size: 1.1rem; flex-wrap: wrap; margin-top: 15px;">
+                <span style="color: #475569;">Presupuesto Total: <strong style="color: #3b82f6;">${formatCurrency(totalBudget)}</strong></span>
+                <span style="color: #475569;">Gastado Real: <strong style="color: ${totalSpent > totalBudget ? '#ef4444' : '#10b981'};">${formatCurrency(totalSpent)}</strong></span>
+            </div>
+        `;
+    }
     renderBudgetPieChart();
 }
 
