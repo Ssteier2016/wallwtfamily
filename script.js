@@ -2418,8 +2418,8 @@ function updateWalletDetails() {
     tbody.innerHTML = accounts.map(acc => {
         const percentage = ((acc.balance / totalBalance) * 100).toFixed(1);
         return `
-            <tr>
-                <td>${escapeHtml(acc.name)}</td>
+            <tr onclick="filterTransactionsByAccount('${acc.id}')" style="cursor:pointer;" title="Hacé clic para ver todas las transacciones de esta billetera">
+                <td style="color: #3b82f6; font-weight: 500;">${escapeHtml(acc.name)}</td>
                 <td>${formatCurrency(acc.balance)}</td>
                 <td>${percentage}%</td>
             </tr>
@@ -3571,6 +3571,14 @@ function updateBudgetMonthSelector() {
 }
 
 // ========== FUNCIONES GLOBALES PARA ONCLICK ==========
+window.filterTransactionsByAccount = (accId) => {
+    const accSelect = document.getElementById('filterAccount');
+    if (accSelect) {
+        accSelect.value = accId;
+    }
+    switchView('transactions');
+    renderTransactionsList();
+};
 window.deleteTransactionHandler = (id) => { if (confirm('¿Eliminar esta transacción?')) deleteTransaction(id); };
 window.deleteAccountHandler = (id) => { if (confirm('¿Eliminar esta billetera?')) deleteAccount(id); };
 window.deleteCategoryHandler = (id) => { if (confirm('¿Eliminar esta categoría?')) deleteCategory(id); };
