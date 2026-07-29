@@ -124,6 +124,7 @@ let cedearBrokerNotes = {}; // { 'IOL': 'cuenta comitente #123' }
 let cedearDeleted = {}; // { 'TSLA|IOL': { amount, price, broker, type, imageUrl, deletedAt } }
 let cryptoIcons = {}; // { 'SOL': 'url', 'BNB': 'url', 'NEXO': 'url' }
 let trades = [];
+let deletedTransactionsStack = [];
 let tradeChartInstance = null;
 let currentTradeCalendarDate = new Date();
 let chartTypes = {
@@ -696,18 +697,22 @@ function updateTransaction(id, updatedData) {
 }
 
 function deleteTransaction(id) {
-    const t = transactions.find(t => t.id === id);
+    const t = transactions.find(tx => tx.id === id);
     if (!t) return false;
-    const acc = accounts.find(a => a.id === t.accId);
-    if (acc) {
-        if (t.type === 'ingreso') acc.balance -= t.amount;
-        else acc.balance += t.amount;
+    
+    // Guardar en la pila de deshacer
+    deletedTransactionsStack.push(t);
+    if (deletedTransactionsStack.length > 10) {
+        deletedTransactionsStack.shift(); // limitar a 10
     }
+    
     transactions = transactions.filter(tx => tx.id !== id);
+    recalculateAllBalances();
     saveToLocalStorage();
     syncToCloud();
     refreshAllViews();
-    showToast('Transacción eliminada', 'success');
+    updateUndoButtonVisibility();
+    showToast('Transacción eliminada. Podés deshacer desde la barra superior.', 'success');
     return true;
 }
 
@@ -1959,6 +1964,7 @@ function refreshAllViews() {
     renderBudgetPieChart();
     updateExpenseAccountFilter();
     applyAllCryptoIcons();
+    updateUndoButtonVisibility();
 }
 
 function renderCapitalView() {
@@ -3579,6 +3585,33 @@ window.filterTransactionsByAccount = (accId) => {
     switchView('transactions');
     renderTransactionsList();
 };
+
+window.undoLastDelete = () => {
+    if (deletedTransactionsStack.length === 0) {
+        showToast('No hay transacciones para deshacer.', 'error');
+        return;
+    }
+    const restored = deletedTransactionsStack.pop();
+    transactions.push(restored);
+    recalculateAllBalances();
+    saveToLocalStorage();
+    syncToCloud();
+    refreshAllViews();
+    showToast(`Transacción restaurada: ${restored.note || 'Sin nota'}`, 'success');
+};
+
+function updateUndoButtonVisibility() {
+    const btn = document.getElementById('undoDeleteBtn');
+    if (btn) {
+        if (deletedTransactionsStack.length > 0) {
+            btn.style.display = 'inline-flex';
+            btn.innerHTML = `<i class="fas fa-undo"></i> Deshacer (${deletedTransactionsStack.length})`;
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+}
+window.updateUndoButtonVisibility = updateUndoButtonVisibility;
 window.deleteTransactionHandler = (id) => { if (confirm('¿Eliminar esta transacción?')) deleteTransaction(id); };
 window.deleteAccountHandler = (id) => { if (confirm('¿Eliminar esta billetera?')) deleteAccount(id); };
 window.deleteCategoryHandler = (id) => { if (confirm('¿Eliminar esta categoría?')) deleteCategory(id); };
@@ -4942,6 +4975,15 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Trade eliminado', 'success');
         }
     };
+
+    // Soporte para Ctrl+Z (Deshacer eliminación)
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            e.preventDefault();
+            window.undoLastDelete();
+        }
+    });
 
     // Soporte de teclado (solo cuando la calculadora está abierta)
     document.addEventListener('keydown', function (e) {

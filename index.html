@@ -125,7 +125,12 @@
                         <input type="month" id="filterMonth" class="filter-date">
                         <button class="btn-filter-clear" id="clearFilters">Limpiar</button>
                     </div>
-                    <button class="btn-primary" id="addTransactionBtn2"><i class="fas fa-plus"></i> Nueva transacción</button>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button class="btn-secondary" id="undoDeleteBtn" style="display:none; align-items:center; gap:6px; background:#fff2f2; color:#ef4444; border:1px solid #fecaca; padding:10px 16px; border-radius:12px; font-weight:500; cursor:pointer;" onclick="undoLastDelete()">
+                            <i class="fas fa-undo"></i> Deshacer (0)
+                        </button>
+                        <button class="btn-primary" id="addTransactionBtn2"><i class="fas fa-plus"></i> Nueva transacción</button>
+                    </div>
                 </div>
                 <div class="transactions-table-container">
                     <table class="transactions-table">
