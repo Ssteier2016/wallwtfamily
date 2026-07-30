@@ -2240,15 +2240,28 @@ function updateExpenseAccountFilter() {
 
 // ========== DASHBOARD ==========
 function renderDashboard() {
+    const dashboardMonth = document.getElementById('dashboardMonthSelect')?.value;
     let totalIncome = 0, totalExpense = 0;
     if (Array.isArray(transactions)) {
         transactions.forEach(t => {
             const amt = parseFloat(t.amount);
+            if (dashboardMonth && t.date.slice(0, 7) !== dashboardMonth) return;
             if (t.type === 'ingreso') totalIncome += amt;
-            else totalExpense += amt;
+            else if (t.type === 'gasto') totalExpense += amt;
         });
     }
-    const totalBalance = totalIncome - totalExpense;
+    
+    // El balance total debe ser histórico acumulado hasta el final de ese mes
+    let totalBalance = 0;
+    if (Array.isArray(transactions)) {
+        transactions.forEach(t => {
+            if (dashboardMonth && t.date.slice(0, 7) > dashboardMonth) return;
+            const amt = parseFloat(t.amount);
+            if (t.type === 'ingreso') totalBalance += amt;
+            else if (t.type === 'gasto') totalBalance -= amt;
+        });
+    }
+    
     const totalBalanceElem = document.getElementById('totalBalance');
     const totalIncomeElem = document.getElementById('totalIncome');
     const totalExpenseElem = document.getElementById('totalExpense');
@@ -2256,7 +2269,11 @@ function renderDashboard() {
     if (totalIncomeElem) totalIncomeElem.innerHTML = formatCurrency(totalIncome);
     if (totalExpenseElem) totalExpenseElem.innerHTML = formatCurrency(totalExpense);
     
-    const recent = [...(Array.isArray(transactions) ? transactions : [])].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,5);
+    let recentFiltered = Array.isArray(transactions) ? [...transactions] : [];
+    if (dashboardMonth) {
+        recentFiltered = recentFiltered.filter(t => t.date.slice(0, 7) === dashboardMonth);
+    }
+    const recent = recentFiltered.sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,5);
     const container = document.getElementById('recentTransactionsList');
     if (container) {
         container.innerHTML = recent.map(t => {
@@ -2303,9 +2320,11 @@ function updateExpenseChart() {
     const ctx = document.getElementById('expenseChart')?.getContext('2d');
     if (!ctx) return;
     const expensesByCat = {};
+    const dashboardMonth = document.getElementById('dashboardMonthSelect')?.value;
     if (Array.isArray(transactions)) {
         transactions.forEach(t => {
             if (t.type === 'gasto') {
+                if (dashboardMonth && t.date.slice(0, 7) !== dashboardMonth) return;
                 const catName = getCategoryName(t.catId);
                 expensesByCat[catName] = (expensesByCat[catName] || 0) + parseFloat(t.amount);
             }
@@ -2349,9 +2368,11 @@ function updateIncomeChart() {
     const ctx = document.getElementById('incomeChart')?.getContext('2d');
     if (!ctx) return;
     const incomesByCat = {};
+    const dashboardMonth = document.getElementById('dashboardMonthSelect')?.value;
     if (Array.isArray(transactions)) {
         transactions.forEach(t => {
             if (t.type === 'ingreso') {
+                if (dashboardMonth && t.date.slice(0, 7) !== dashboardMonth) return;
                 const catName = getCategoryName(t.catId);
                 incomesByCat[catName] = (incomesByCat[catName] || 0) + parseFloat(t.amount);
             }
@@ -2394,8 +2415,24 @@ function updateIncomeChart() {
 function updateBalanceChart() {
     const ctx = document.getElementById('balanceChart')?.getContext('2d');
     if (!ctx) return;
+    const dashboardMonth = document.getElementById('dashboardMonthSelect')?.value;
     const labels = accounts.map(a => a.name);
-    const balances = accounts.map(a => a.balance);
+    const balances = accounts.map(a => {
+        if (!dashboardMonth) return a.balance || 0;
+        let bal = 0;
+        transactions.forEach(t => {
+            if (t.date.slice(0, 7) <= dashboardMonth) {
+                if (t.type === 'transferencia') {
+                    if (t.accId === a.id) bal -= parseFloat(t.amount) || 0;
+                    if (t.destAccId === a.id) bal += parseFloat(t.amount) || 0;
+                } else if (t.accId === a.id) {
+                    if (t.type === 'ingreso') bal += parseFloat(t.amount) || 0;
+                    else bal -= parseFloat(t.amount) || 0;
+                }
+            }
+        });
+        return bal;
+    });
     const colors = accounts.map(a => {
         if (a.color.includes('emerald')) return '#10b981';
         if (a.color.includes('blue')) return '#3b82f6';
@@ -4656,6 +4693,70 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (chartName === 'expenseReport') renderExpenseReport();
     };
 
+    // ========== ZOOM DE GRAFICOS EN PANTALLA COMPLETA ==========
+    let zoomChartInstance = null;
+    window.zoomChart = (chartKey) => {
+        const modal = document.getElementById('chartZoomModal');
+        const canvas = document.getElementById('zoomChartCanvas');
+        const titleElem = document.getElementById('zoomModalTitle');
+        if (!modal || !canvas) return;
+        
+        let sourceChart = currentCharts[chartKey];
+        if (!sourceChart) return;
+        
+        if (zoomChartInstance) zoomChartInstance.destroy();
+        
+        let title = "Gráfico Ampliado";
+        if (chartKey === 'expense') title = "Gastos por Categoría";
+        else if (chartKey === 'income') title = "Ingresos por Categoría";
+        else if (chartKey === 'balance') title = "Balance por Billetera";
+        if (titleElem) titleElem.textContent = title;
+        
+        // Deep copy of chart config to avoid mutating original charts
+        const config = {
+            type: sourceChart.config.type,
+            data: JSON.parse(JSON.stringify(sourceChart.config.data)),
+            options: JSON.parse(JSON.stringify(sourceChart.config.options))
+        };
+        
+        // Make sure it looks nice in fullscreen and show legend
+        if (config.options.plugins && config.options.plugins.legend) {
+            config.options.plugins.legend.display = true;
+            config.options.plugins.legend.position = 'bottom';
+            config.options.plugins.legend.labels = {
+                font: { size: 14 }
+            };
+        }
+        
+        // Restore callback formatters which don't survive deep copy stringify
+        if (chartKey === 'expense' || chartKey === 'income') {
+            config.options.plugins.tooltip = {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.raw;
+                        const total = context.dataset.data.reduce((a,b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${label}: ${formatCurrency(value)} (${percentage}%)`;
+                    }
+                }
+            };
+        }
+        
+        if (config.options.scales) {
+            if (config.options.scales.x && config.options.scales.x.ticks) {
+                config.options.scales.x.ticks.callback = (value) => formatCurrency(value);
+            }
+            if (config.options.scales.y && config.options.scales.y.ticks) {
+                config.options.scales.y.ticks.callback = (value) => formatCurrency(value);
+            }
+        }
+        
+        openModal('chartZoomModal');
+        const ctx = canvas.getContext('2d');
+        zoomChartInstance = new Chart(ctx, config);
+    };
+
     // ========== LOGICA DE TRADING ==========
     function calculateTradesPnL() {
         const sortedTrades = [...trades].sort((a,b) => new Date(a.date) - new Date(b.date));
@@ -5032,5 +5133,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 document.getElementById('modalCalcPanel').style.display = 'none';
             });
+
+        document.getElementById('dashboardMonthSelect')?.addEventListener('change', () => {
+            renderDashboard();
+        });
+        document.getElementById('clearDashboardMonth')?.addEventListener('click', () => {
+            const input = document.getElementById('dashboardMonthSelect');
+            if (input) input.value = '';
+            renderDashboard();
+        });
     });
 })();
