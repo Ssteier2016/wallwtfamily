@@ -128,10 +128,10 @@ let deletedTransactionsStack = [];
 let tradeChartInstance = null;
 let currentTradeCalendarDate = new Date();
 let chartTypes = {
-    expense: 'doughnut',
-    income: 'doughnut',
-    budget: 'doughnut',
-    expenseReport: 'doughnut'
+    expense: 'bar',
+    income: 'bar',
+    budget: 'bar',
+    expenseReport: 'bar'
 };
 
 // Helpers clave compuesta TICKER|BROKER
