@@ -2338,6 +2338,7 @@ function updateExpenseChart() {
     const isBar = chartTypes.expense === 'bar';
     currentCharts.expense = new Chart(ctx, {
         type: isBar ? 'bar' : 'doughnut',
+        plugins: [ChartDataLabels],
         data: { labels, datasets: [{ label: 'Gastos', data, backgroundColor: colors, borderWidth: 0, borderRadius: isBar ? 6 : 0 }] },
         options: {
             indexAxis: isBar ? 'y' : undefined,
@@ -2345,6 +2346,19 @@ function updateExpenseChart() {
             maintainAspectRatio: true,
             plugins: {
                 legend: { display: !isBar, position: 'bottom' },
+                datalabels: {
+                    display: true,
+                    color: isBar ? '#1e293b' : '#ffffff',
+                    anchor: isBar ? 'end' : 'center',
+                    align: isBar ? 'end' : 'center',
+                    offset: isBar ? 4 : 0,
+                    font: { weight: 'bold', size: 9 },
+                    formatter: (value, context) => {
+                        const total = context.dataset.data.reduce((a,b) => a + b, 0);
+                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                        return `${formatCurrency(value)} (${percentage}%)`;
+                    }
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -2386,6 +2400,7 @@ function updateIncomeChart() {
     const isBar = chartTypes.income === 'bar';
     currentCharts.income = new Chart(ctx, {
         type: isBar ? 'bar' : 'doughnut',
+        plugins: [ChartDataLabels],
         data: { labels, datasets: [{ label: 'Ingresos', data, backgroundColor: colors, borderWidth: 0, borderRadius: isBar ? 6 : 0 }] },
         options: {
             indexAxis: isBar ? 'y' : undefined,
@@ -2393,6 +2408,19 @@ function updateIncomeChart() {
             maintainAspectRatio: true,
             plugins: {
                 legend: { display: !isBar, position: 'bottom' },
+                datalabels: {
+                    display: true,
+                    color: isBar ? '#1e293b' : '#ffffff',
+                    anchor: isBar ? 'end' : 'center',
+                    align: isBar ? 'end' : 'center',
+                    offset: isBar ? 4 : 0,
+                    font: { weight: 'bold', size: 9 },
+                    formatter: (value, context) => {
+                        const total = context.dataset.data.reduce((a,b) => a + b, 0);
+                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                        return `${formatCurrency(value)} (${percentage}%)`;
+                    }
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -4042,6 +4070,10 @@ function switchView(viewId) {
 
 // ========== EVENT LISTENERS ==========
 document.addEventListener('DOMContentLoaded', () => {
+    const dashMonthSelect = document.getElementById('dashboardMonthSelect');
+    if (dashMonthSelect) {
+        dashMonthSelect.value = new Date().toISOString().slice(0, 7);
+    }
     initializeData();
     refreshAllViews();
     switchView('dashboard');
