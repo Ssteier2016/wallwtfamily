@@ -2713,12 +2713,28 @@ function renderBudgetsList() {
         const spent = Array.isArray(transactions) ? transactions.filter(t => t.catId === b.categoryId && t.type === 'gasto' && t.date.slice(0,7) === selectedMonth).reduce((sumT, t) => sumT + parseFloat(t.amount), 0) : 0;
         return sum + spent;
     }, 0);
+    
+    // Calcular Ingresos Reales vs Gastos Reales Totales del mes
+    const totalIncome = Array.isArray(transactions) ? transactions.filter(t => t.type === 'ingreso' && t.date.slice(0,7) === selectedMonth).reduce((sum, t) => sum + parseFloat(t.amount), 0) : 0;
+    const totalExpense = Array.isArray(transactions) ? transactions.filter(t => t.type === 'gasto' && t.date.slice(0,7) === selectedMonth).reduce((sum, t) => sum + parseFloat(t.amount), 0) : 0;
+    const difference = totalIncome - totalExpense;
+    const diffText = difference >= 0 ? 'Sobrante' : 'Faltante';
+    const diffColor = difference >= 0 ? '#10b981' : '#ef4444';
+
     const totalBudgetElem = document.getElementById('budgetTotalAmount');
     if (totalBudgetElem) {
         totalBudgetElem.innerHTML = `
-            <div style="display: flex; justify-content: center; gap: 24px; font-size: 1.1rem; flex-wrap: wrap; margin-top: 15px;">
-                <span style="color: #475569;">Presupuesto Total: <strong style="color: #3b82f6;">${formatCurrency(totalBudget)}</strong></span>
-                <span style="color: #475569;">Gastado Real: <strong style="color: ${totalSpent > totalBudget ? '#ef4444' : '#10b981'};">${formatCurrency(totalSpent)}</strong></span>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 20px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
+                <div style="display: flex; justify-content: center; gap: 24px; font-size: 1.05rem; flex-wrap: wrap;">
+                    <span style="color: #475569;">Presupuesto Total: <strong style="color: #3b82f6;">${formatCurrency(totalBudget)}</strong></span>
+                    <span style="color: #475569;">Gastado Categorías Presupuestadas: <strong style="color: ${totalSpent > totalBudget ? '#ef4444' : '#10b981'};">${formatCurrency(totalSpent)}</strong></span>
+                </div>
+                <div style="width: 100%; height: 1px; background: #e2e8f0; margin: 4px 0;"></div>
+                <div style="display: flex; justify-content: center; gap: 24px; font-size: 1.05rem; flex-wrap: wrap;">
+                    <span style="color: #475569;">Ingresos Reales del Mes: <strong style="color: #10b981;">${formatCurrency(totalIncome)}</strong></span>
+                    <span style="color: #475569;">Gastos Reales Totales del Mes: <strong style="color: #ef4444;">${formatCurrency(totalExpense)}</strong></span>
+                    <span style="color: #1e293b; font-weight: 600;">Diferencia (${diffText}): <span style="color: ${diffColor};">${formatCurrency(Math.abs(difference))}</span></span>
+                </div>
             </div>
         `;
     }
