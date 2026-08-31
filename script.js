@@ -3383,6 +3383,7 @@ async function joinWithCode(code) {
 // ========== BACKUP GOOGLE SHEETS ==========
 
 async function backupToGoogleSheets() {
+    if (!firebaseEnabled) { showToast('Firebase no configurado', 'error'); return; }
     if (!currentUser) { showToast('Iniciá sesión primero', 'error'); return; }
 
     showToast('Conectando con Google Sheets…', 'success');
@@ -3393,11 +3394,22 @@ async function backupToGoogleSheets() {
         const sheetsProvider = new GoogleAuthProvider();
         sheetsProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
         sheetsProvider.addScope('https://www.googleapis.com/auth/drive.file');
-        const result = await signInWithPopup(auth, sheetsProvider);
+        // Si el popup queda bloqueado (ad-blocker/bloqueador de popups) signInWithPopup
+        // puede quedar colgado sin resolver ni rechazar nunca, dejando el botón "muerto".
+        // Le ponemos un límite de tiempo para siempre darle una respuesta al usuario.
+        const popupTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('popup-timeout')), 20000)
+        );
+        const result = await Promise.race([signInWithPopup(auth, sheetsProvider), popupTimeout]);
         const credential = GoogleAuthProvider.credentialFromResult(result);
-        token = credential.accessToken;
+        token = credential?.accessToken;
+        if (!token) throw new Error('sin-token');
     } catch (e) {
-        showToast('No se pudo obtener permiso para Google Sheets', 'error');
+        console.error('Error al pedir permiso de Google Sheets:', e);
+        const msg = e?.message === 'popup-timeout'
+            ? 'No se pudo abrir la ventana de Google. Verificá que no tenés un bloqueador de anuncios/popups activo.'
+            : 'No se pudo obtener permiso para Google Sheets';
+        showToast(msg, 'error');
         return;
     }
 
