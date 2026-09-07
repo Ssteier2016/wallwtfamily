@@ -765,6 +765,11 @@
                 <div class="form-group"><label>Categoría</label><select id="budgetCategoryId" required></select></div>
                 <div class="form-group"><label>Monto presupuestado (ARS)</label><input type="number" id="budgetAmount" step="0.01" required></div>
                 <div class="form-group"><label>Mes</label><input type="month" id="budgetMonth" required></div>
+                <div class="form-group"><label>Fecha de vencimiento (opcional)</label><input type="date" id="budgetDueDate"></div>
+                <div class="form-group" id="budgetCurrentSpentRow" style="display:none;">
+                    <label>Gasto del presupuesto actual</label>
+                    <div id="budgetCurrentSpent" style="font-weight:600; padding:6px 0;"></div>
+                </div>
                 <div class="form-actions"><button type="button" class="btn-secondary modal-close">Cancelar</button><button type="submit" class="btn-primary">Guardar</button></div>
             </form>
         </div>
