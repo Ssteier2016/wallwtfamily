@@ -809,7 +809,8 @@ function addBudget(budget) {
         id: 'bud-' + Date.now(),
         categoryId: budget.categoryId,
         amount: parseFloat(budget.amount),
-        month: budget.month
+        month: budget.month,
+        dueDate: budget.dueDate || null
     };
     budgets.push(newBudget);
     saveToLocalStorage();
@@ -2692,6 +2693,7 @@ function renderBudgetsList() {
                     <div class="budget-amount">Presupuestado: ${formatCurrency(b.amount)} | Gastado: ${formatCurrency(spent)}</div>
                     <div class="budget-progress"><div class="budget-progress-bar ${exceeded ? 'exceeded' : ''}" style="width: ${Math.min(percent,100)}%"></div></div>
                     ${exceeded ? '<span style="color:#ef4444; font-size:0.75rem;">¡Superaste el presupuesto!</span>' : ''}
+                    ${b.dueDate ? `<div style="font-size:0.78rem; color:${isDueSoonOrPast(b.dueDate) ? '#ef4444' : '#64748b'}; margin-top:4px;"><i class="fas fa-calendar"></i> Vence: ${formatDate(b.dueDate)}</div>` : ''}
                     <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                         <button class="btn-secondary" style="font-size:0.78rem; padding:5px 10px; display:flex; align-items:center; gap:4px;" onclick="replicateBudgetToNextMonth('${b.id}')" title="Replicar este presupuesto al mes siguiente">
                             <i class="fas fa-calendar-plus"></i> Replicar mes sig.
@@ -3609,6 +3611,7 @@ function formatCurrency(value) {
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(value);
 }
 function formatDate(dateString) { const d = new Date(dateString); return d.toLocaleDateString('es-AR'); }
+function isDueSoonOrPast(dateString) { return dateString.slice(0,10) <= new Date().toISOString().slice(0,10); }
 function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 function formatPriceVariation(currentPrice, prevPrice) {
     if (!prevPrice || prevPrice === 0) return '';
@@ -3710,6 +3713,20 @@ window.deleteAccountHandler = (id) => { if (confirm('¿Eliminar esta billetera?'
 window.deleteCategoryHandler = (id) => { if (confirm('¿Eliminar esta categoría?')) deleteCategory(id); };
 window.deleteBudget = (id) => { if (confirm('¿Eliminar este presupuesto?')) deleteBudget(id); };
 window.deleteGoalHandler = (id) => { if (confirm('¿Eliminar esta meta?')) deleteGoal(id); };
+function updateBudgetCurrentSpentDisplay() {
+    const row = document.getElementById('budgetCurrentSpentRow');
+    const display = document.getElementById('budgetCurrentSpent');
+    if (!row || !display) return;
+    const categoryId = document.getElementById('budgetCategoryId')?.value;
+    const month = document.getElementById('budgetMonth')?.value;
+    if (!categoryId || !month) { row.style.display = 'none'; return; }
+    const spent = Array.isArray(transactions)
+        ? transactions.filter(t => t.catId === categoryId && t.type === 'gasto' && t.date.slice(0,7) === month).reduce((sum, t) => sum + parseFloat(t.amount), 0)
+        : 0;
+    display.textContent = formatCurrency(spent);
+    row.style.display = 'block';
+}
+
 window.editBudget = (id) => {
     const budget = budgets.find(b => b.id === id);
     if (!budget) return;
@@ -3717,6 +3734,8 @@ window.editBudget = (id) => {
     document.getElementById('budgetCategoryId').value = budget.categoryId;
     document.getElementById('budgetAmount').value = budget.amount;
     document.getElementById('budgetMonth').value = budget.month;
+    document.getElementById('budgetDueDate').value = budget.dueDate || '';
+    updateBudgetCurrentSpentDisplay();
     openModal('budgetModal');
 };
 
@@ -4122,8 +4141,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('budgetCategoryId').value = '';
         document.getElementById('budgetAmount').value = '';
         document.getElementById('budgetMonth').value = new Date().toISOString().slice(0,7);
+        document.getElementById('budgetDueDate').value = '';
+        updateBudgetCurrentSpentDisplay();
         openModal('budgetModal');
     });
+    document.getElementById('budgetCategoryId')?.addEventListener('change', updateBudgetCurrentSpentDisplay);
+    document.getElementById('budgetMonth')?.addEventListener('change', updateBudgetCurrentSpentDisplay);
     document.getElementById('addGoalBtn')?.addEventListener('click', () => {
         document.getElementById('goalId').value = '';
         document.getElementById('goalName').value = '';
@@ -4383,9 +4406,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const categoryId = document.getElementById('budgetCategoryId').value;
         const amount = document.getElementById('budgetAmount').value;
         const month = document.getElementById('budgetMonth').value;
+        const dueDate = document.getElementById('budgetDueDate').value || null;
         if (!categoryId || !amount || !month) { showToast("Completa todos los campos", "error"); return; }
-        if (id) updateBudget(id, { categoryId, amount: parseFloat(amount), month });
-        else addBudget({ categoryId, amount: parseFloat(amount), month });
+        if (id) updateBudget(id, { categoryId, amount: parseFloat(amount), month, dueDate });
+        else addBudget({ categoryId, amount: parseFloat(amount), month, dueDate });
         closeModal();
     });
     document.getElementById('goalForm')?.addEventListener('submit', (e) => {
