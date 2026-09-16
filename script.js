@@ -2723,6 +2723,12 @@ function renderBudgetsList() {
     const diffText = difference >= 0 ? 'Sobrante' : 'Faltante';
     const diffColor = difference >= 0 ? '#10b981' : '#ef4444';
 
+    // Ingresos del mes en la billetera "Sueldo"
+    const sueldoAcc = accounts.find(a => a.name.trim().toLowerCase() === 'sueldo');
+    const sueldoIncome = sueldoAcc && Array.isArray(transactions)
+        ? transactions.filter(t => t.type === 'ingreso' && t.accId === sueldoAcc.id && t.date.slice(0,7) === selectedMonth).reduce((sum, t) => sum + parseFloat(t.amount), 0)
+        : 0;
+
     const totalBudgetElem = document.getElementById('budgetTotalAmount');
     if (totalBudgetElem) {
         totalBudgetElem.innerHTML = `
@@ -2737,6 +2743,11 @@ function renderBudgetsList() {
                     <span style="color: #475569;">Gastos Reales Totales del Mes: <strong style="color: #ef4444;">${formatCurrency(totalExpense)}</strong></span>
                     <span style="color: #1e293b; font-weight: 600;">Diferencia (${diffText}): <span style="color: ${diffColor};">${formatCurrency(Math.abs(difference))}</span></span>
                 </div>
+                ${sueldoAcc ? `
+                <div style="width: 100%; height: 1px; background: #e2e8f0; margin: 4px 0;"></div>
+                <div style="display: flex; justify-content: center; gap: 24px; font-size: 1.05rem; flex-wrap: wrap;">
+                    <span style="color: #475569;">Ingreso de Sueldo: <strong style="color: #10b981;">${formatCurrency(sueldoIncome)}</strong></span>
+                </div>` : ''}
             </div>
         `;
     }
