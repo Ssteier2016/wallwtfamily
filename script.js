@@ -2678,8 +2678,9 @@ function renderBudgetsList() {
     }
     container.innerHTML = monthly.map(b => {
         const cat = categories.find(c => c.id === b.categoryId);
+        const parentCat = cat && cat.parentId ? categories.find(p => p.id === cat.parentId) : null;
         const catName = cat ? cat.name : 'Categoría';
-        const catImg = cat ? (cat.imageUrl || '') : '';
+        const catImg = cat ? (cat.imageUrl || (parentCat && parentCat.imageUrl) || '') : '';
         const spent = Array.isArray(transactions) ? transactions.filter(t => t.catId === b.categoryId && t.type === 'gasto' && t.date.slice(0,7) === selectedMonth).reduce((sum, t) => sum + parseFloat(t.amount), 0) : 0;
         const percent = (spent / b.amount) * 100;
         const exceeded = spent > b.amount;
@@ -2688,7 +2689,10 @@ function renderBudgetsList() {
                 <div class="budget-info">
                     <div style="display:flex; align-items:center; gap:10px;">
                         ${catImg ? `<img src="${catImg}" style="width:32px;height:32px;object-fit:cover;border-radius:8px;">` : `<div style="width:32px;height:32px;background:${cat?.color || '#ccc'};border-radius:8px;"></div>`}
-                        <strong>${escapeHtml(catName)}</strong>
+                        <div>
+                            ${parentCat ? `<div style="font-size:0.72rem; color:#94a3b8; line-height:1.2;">${escapeHtml(parentCat.name)}</div>` : ''}
+                            <strong>${escapeHtml(catName)}</strong>
+                        </div>
                     </div>
                     <div class="budget-amount">Presupuestado: ${formatCurrency(b.amount)} | Gastado: ${formatCurrency(spent)}</div>
                     <div class="budget-progress"><div class="budget-progress-bar ${exceeded ? 'exceeded' : ''}" style="width: ${Math.min(percent,100)}%"></div></div>
