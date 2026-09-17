@@ -433,6 +433,9 @@ function recalculateAllBalances() {
 // ========== SINCRONIZACIÓN CON FIRESTORE ==========
 // ========== HELPERS DE WALLET COMPARTIDA ==========
 let unsubscribeWalletListener = null;
+// Evita que syncToCloud() pise los datos reales de la nube con el estado local
+// (posiblemente vacío/desactualizado) antes de que llegue el primer snapshot real.
+let cloudSnapshotReady = false;
 
 function getActiveWalletUserId() {
     const sharedId = localStorage.getItem('shared_wallet_owner_id');
@@ -474,13 +477,15 @@ function setupWalletListener() {
         unsubscribeWalletListener();
         unsubscribeWalletListener = null;
     }
-    
+    cloudSnapshotReady = false;
+
     if (!firebaseEnabled || !currentUser) return;
-    
+
     const targetUserId = getActiveWalletUserId();
     const userDocRef = doc(db, 'users', targetUserId);
-    
+
     unsubscribeWalletListener = onSnapshot(userDocRef, (docSnap) => {
+        cloudSnapshotReady = true;
         if (docSnap.exists()) {
             const data = docSnap.data();
             
@@ -568,6 +573,10 @@ function setupWalletListener() {
 // ========== SINCRONIZACIÓN CON FIRESTORE ==========
 async function syncToCloud() {
     if (!firebaseEnabled || !currentUser || !syncEnabled) return;
+    if (!cloudSnapshotReady) {
+        console.warn("Sync a la nube pausado: todavía no se cargó el estado real de la nube (evita sobreescribir con datos locales desactualizados).");
+        return;
+    }
     try {
         const targetUserId = getActiveWalletUserId();
         const userDocRef = doc(db, 'users', targetUserId);
