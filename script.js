@@ -1084,7 +1084,6 @@ function addUSD(amount) {
 
 function removeUSD(amount) {
     if (amount <= 0) { showToast("Cantidad inválida", "error"); return; }
-    if (usdHoldings < amount) { showToast("No tienes suficientes USD", "error"); return; }
     usdHoldings -= amount;
     const newMove = {
         id: 'usd-' + Date.now(),
