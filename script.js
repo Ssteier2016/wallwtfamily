@@ -2174,6 +2174,9 @@ function renderCapitalView() {
     if (document.getElementById('capitalSOLPercent')) document.getElementById('capitalSOLPercent').innerHTML = pctOfTotal(capitalSOLARS);
     if (document.getElementById('capitalBNBPercent')) document.getElementById('capitalBNBPercent').innerHTML = pctOfTotal(capitalBNBARS);
     if (document.getElementById('capitalNEXOPercent')) document.getElementById('capitalNEXOPercent').innerHTML = pctOfTotal(capitalNEXOARS);
+    if (document.getElementById('totalBilleterasPercent')) document.getElementById('totalBilleterasPercent').innerHTML = pctOfTotal(totalBilleterasARS);
+    if (document.getElementById('totalCedearPercent')) document.getElementById('totalCedearPercent').innerHTML = pctOfTotal(totalCedearARS);
+    if (document.getElementById('totalAccionesPercent')) document.getElementById('totalAccionesPercent').innerHTML = pctOfTotal(totalAccionesARS);
 
     // Filtros de visibilidad
     const usdSection = document.getElementById('capitalUSDSection');
