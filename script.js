@@ -2167,6 +2167,14 @@ function renderCapitalView() {
     document.getElementById('totalWealth').innerHTML = formatCurrency(totalARS);
     document.getElementById('totalWealthUSD').innerHTML = formatCurrencyUSD(totalUSD);
 
+    // % que representa cada cartel sobre el patrimonio total (ARS)
+    const pctOfTotal = (valueARS) => totalARS > 0 ? `${((valueARS / totalARS) * 100).toFixed(2)}%` : '0%';
+    if (document.getElementById('capitalUSDPercent')) document.getElementById('capitalUSDPercent').innerHTML = pctOfTotal(capitalUSDARS);
+    if (document.getElementById('capitalBTCPercent')) document.getElementById('capitalBTCPercent').innerHTML = pctOfTotal(capitalBTCARS);
+    if (document.getElementById('capitalSOLPercent')) document.getElementById('capitalSOLPercent').innerHTML = pctOfTotal(capitalSOLARS);
+    if (document.getElementById('capitalBNBPercent')) document.getElementById('capitalBNBPercent').innerHTML = pctOfTotal(capitalBNBARS);
+    if (document.getElementById('capitalNEXOPercent')) document.getElementById('capitalNEXOPercent').innerHTML = pctOfTotal(capitalNEXOARS);
+
     // Filtros de visibilidad
     const usdSection = document.getElementById('capitalUSDSection');
     const btcSection = document.getElementById('capitalBTCSection');
