@@ -2703,6 +2703,8 @@ function renderBudgetsList() {
         const spent = Array.isArray(transactions) ? transactions.filter(t => t.catId === b.categoryId && t.type === 'gasto' && t.date.slice(0,7) === selectedMonth).reduce((sum, t) => sum + parseFloat(t.amount), 0) : 0;
         const percent = (spent / b.amount) * 100;
         const exceeded = spent > b.amount;
+        const isPaid = spent >= b.amount;
+        const dueInfo = b.dueDate ? getDueDateInfo(b.dueDate, isPaid) : null;
         return `
             <div class="budget-card">
                 <div class="budget-info">
@@ -2716,7 +2718,7 @@ function renderBudgetsList() {
                     <div class="budget-amount">Presupuestado: ${formatCurrency(b.amount)} | Gastado: ${formatCurrency(spent)}</div>
                     <div class="budget-progress"><div class="budget-progress-bar ${exceeded ? 'exceeded' : ''}" style="width: ${Math.min(percent,100)}%"></div></div>
                     ${exceeded ? '<span style="color:#ef4444; font-size:0.75rem;">¡Superaste el presupuesto!</span>' : ''}
-                    ${b.dueDate ? `<div style="font-size:0.78rem; color:${isDueSoonOrPast(b.dueDate) ? '#ef4444' : '#64748b'}; margin-top:4px;"><i class="fas fa-calendar"></i> Vence: ${formatDate(b.dueDate)}</div>` : ''}
+                    ${b.dueDate ? `<div style="font-size:0.78rem; color:#64748b; margin-top:4px;"><i class="fas fa-calendar"></i> Vence: ${formatDate(b.dueDate)} <span style="color:${dueInfo.color}; font-weight:600;">(${dueInfo.label})</span></div>` : ''}
                     <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                         <button class="btn-secondary" style="font-size:0.78rem; padding:5px 10px; display:flex; align-items:center; gap:4px;" onclick="replicateBudgetToNextMonth('${b.id}')" title="Replicar este presupuesto al mes siguiente">
                             <i class="fas fa-calendar-plus"></i> Replicar mes sig.
@@ -3645,7 +3647,17 @@ function formatCurrency(value) {
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(value);
 }
 function formatDate(dateString) { const d = new Date(dateString); return d.toLocaleDateString('es-AR'); }
-function isDueSoonOrPast(dateString) { return dateString.slice(0,10) <= new Date().toISOString().slice(0,10); }
+function getDueDateInfo(dueDate, isPaid) {
+    const today = new Date(new Date().toISOString().slice(0,10) + 'T00:00:00');
+    const due = new Date(dueDate.slice(0,10) + 'T00:00:00');
+    const diffDays = Math.round((due - today) / 86400000);
+    if (diffDays >= 0) {
+        return { color: '#10b981', label: diffDays === 0 ? 'vence hoy' : `faltan ${diffDays} día${diffDays === 1 ? '' : 's'}` };
+    }
+    if (isPaid) return { color: '#10b981', label: 'pagado' };
+    const overdue = Math.abs(diffDays);
+    return { color: '#ef4444', label: `${overdue} día${overdue === 1 ? '' : 's'} de atraso` };
+}
 function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 function formatPriceVariation(currentPrice, prevPrice) {
     if (!prevPrice || prevPrice === 0) return '';
