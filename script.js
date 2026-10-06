@@ -3288,7 +3288,7 @@ function renderExpenseReport() {
     } else {
         const monthlyData = {};
         gastos.forEach(t => {
-            const monthKey = new Date(t.date).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' });
+            const monthKey = new Date(t.date + 'T00:00:00').toLocaleDateString('es-AR', { month: 'short', year: 'numeric' });
             monthlyData[monthKey] = (monthlyData[monthKey] || 0) + parseFloat(t.amount);
         });
         const labels = Object.keys(monthlyData);
@@ -3463,7 +3463,7 @@ async function backupToGoogleSheets() {
             .slice()
             .sort((a, b) => b.date.localeCompare(a.date))
             .map(t => [
-                new Date(t.date).toLocaleDateString('es-AR'),
+                formatDate(t.date),
                 t.type === 'ingreso' ? 'Ingreso' : 'Gasto',
                 getCategoryName(t.catId),
                 accounts.find(a => a.id === t.accId)?.name || '',
@@ -3646,7 +3646,14 @@ async function logout() {
 function formatCurrency(value) {
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(value);
 }
-function formatDate(dateString) { const d = new Date(dateString); return d.toLocaleDateString('es-AR'); }
+function formatDate(dateString) {
+    // Las fechas "solo fecha" (YYYY-MM-DD) las interpreta como UTC si se las pasamos
+    // directo a new Date(), y al convertir a hora local (Argentina, UTC-3) se corren
+    // un día para atrás. Forzamos que se interpreten en hora LOCAL agregando horario.
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateString);
+    const d = isDateOnly ? new Date(dateString + 'T00:00:00') : new Date(dateString);
+    return d.toLocaleDateString('es-AR');
+}
 function getDueDateInfo(dueDate, isPaid) {
     const today = new Date(new Date().toISOString().slice(0,10) + 'T00:00:00');
     const due = new Date(dueDate.slice(0,10) + 'T00:00:00');
