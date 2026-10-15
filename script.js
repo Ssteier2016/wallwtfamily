@@ -2691,10 +2691,37 @@ function renderBudgetsList() {
     if (!Array.isArray(budgets)) budgets = [];
     const selectedMonth = document.getElementById('budgetMonthSelect')?.value || new Date().toISOString().slice(0,7);
     const monthly = budgets.filter(b => b.month === selectedMonth);
-    if (monthly.length === 0) {
+
+    // Gastos del mes que no pertenecen a ninguna categoría presupuestada ("gastos extras")
+    const budgetedCatIds = new Set(monthly.map(b => b.categoryId));
+    const extraTransactions = Array.isArray(transactions)
+        ? transactions.filter(t => t.type === 'gasto' && t.date.slice(0,7) === selectedMonth && !budgetedCatIds.has(t.catId))
+        : [];
+    const extraTotal = extraTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+    // Gasto total real del mes (presupuestado + extra), usado para el % de cada tarjeta
+    const totalExpenseForPercent = Array.isArray(transactions)
+        ? transactions.filter(t => t.type === 'gasto' && t.date.slice(0,7) === selectedMonth).reduce((sum, t) => sum + parseFloat(t.amount), 0)
+        : 0;
+    const pctOfTotalSpent = (amount) => totalExpenseForPercent > 0 ? `${((amount / totalExpenseForPercent) * 100).toFixed(2)}%` : '0%';
+
+    if (monthly.length === 0 && extraTotal === 0) {
         container.innerHTML = '<div class="empty-state">Sin presupuestos para este mes. Crea uno.</div>';
         return;
     }
+    const extraCardHtml = extraTotal > 0 ? `
+        <div class="budget-card" style="cursor:pointer; background:#fff7ed; border:1px solid #fed7aa;" onclick="openExtraExpensesModal()">
+            <div class="budget-info">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:32px;height:32px;background:#f97316;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-exclamation-circle" style="color:#fff;"></i>
+                    </div>
+                    <strong>Gastos Extras</strong>
+                </div>
+                <div class="budget-amount">Total: ${formatCurrency(extraTotal)} <span style="color:#64748b;">(${pctOfTotalSpent(extraTotal)} del gasto total)</span></div>
+                <div style="font-size:0.75rem; color:#f97316; margin-top:4px;">Sin categoría presupuestada · Click para ver detalle</div>
+            </div>
+        </div>` : '';
     container.innerHTML = monthly.map(b => {
         const cat = categories.find(c => c.id === b.categoryId);
         const parentCat = cat && cat.parentId ? categories.find(p => p.id === cat.parentId) : null;
@@ -2715,7 +2742,7 @@ function renderBudgetsList() {
                             <strong>${escapeHtml(catName)}</strong>
                         </div>
                     </div>
-                    <div class="budget-amount">Presupuestado: ${formatCurrency(b.amount)} | Gastado: ${formatCurrency(spent)}</div>
+                    <div class="budget-amount">Presupuestado: ${formatCurrency(b.amount)} | Gastado: ${formatCurrency(spent)} <span style="color:#64748b;">(${pctOfTotalSpent(spent)} del gasto total)</span></div>
                     <div class="budget-progress"><div class="budget-progress-bar ${exceeded ? 'exceeded' : ''}" style="width: ${Math.min(percent,100)}%"></div></div>
                     ${exceeded ? '<span style="color:#ef4444; font-size:0.75rem;">¡Superaste el presupuesto!</span>' : ''}
                     ${b.dueDate ? `<div style="font-size:0.78rem; color:#64748b; margin-top:4px;"><i class="fas fa-calendar"></i> Vence: ${formatDate(b.dueDate)} <span style="color:${dueInfo.color}; font-weight:600;">(${dueInfo.label})</span></div>` : ''}
@@ -2734,7 +2761,7 @@ function renderBudgetsList() {
                 </div>
             </div>
         `;
-    }).join('');
+    }).join('') + extraCardHtml;
     const totalBudget = monthly.reduce((sum, b) => sum + b.amount, 0);
     const totalSpent = monthly.reduce((sum, b) => {
         const spent = Array.isArray(transactions) ? transactions.filter(t => t.catId === b.categoryId && t.type === 'gasto' && t.date.slice(0,7) === selectedMonth).reduce((sumT, t) => sumT + parseFloat(t.amount), 0) : 0;
@@ -3790,6 +3817,43 @@ window.editBudget = (id) => {
     document.getElementById('budgetDueDate').value = budget.dueDate || '';
     updateBudgetCurrentSpentDisplay();
     openModal('budgetModal');
+};
+
+window.openExtraExpensesModal = () => {
+    const selectedMonth = document.getElementById('budgetMonthSelect')?.value || new Date().toISOString().slice(0,7);
+    const monthly = budgets.filter(b => b.month === selectedMonth);
+    const budgetedCatIds = new Set(monthly.map(b => b.categoryId));
+    const extraTransactions = Array.isArray(transactions)
+        ? transactions.filter(t => t.type === 'gasto' && t.date.slice(0,7) === selectedMonth && !budgetedCatIds.has(t.catId))
+        : [];
+    const extraTotal = extraTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+    const byCategory = {};
+    extraTransactions.forEach(t => {
+        if (!byCategory[t.catId]) byCategory[t.catId] = 0;
+        byCategory[t.catId] += parseFloat(t.amount);
+    });
+    const rows = Object.entries(byCategory)
+        .map(([catId, amount]) => ({ catId, amount, percent: extraTotal > 0 ? (amount / extraTotal) * 100 : 0 }))
+        .sort((a, b) => b.amount - a.amount);
+
+    const list = document.getElementById('extraExpensesList');
+    if (list) {
+        list.innerHTML = rows.length ? rows.map(r => {
+            const cat = categories.find(c => c.id === r.catId);
+            const parentCat = cat && cat.parentId ? categories.find(p => p.id === cat.parentId) : null;
+            const catImg = cat ? (cat.imageUrl || (parentCat && parentCat.imageUrl) || '') : '';
+            return `
+            <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f8fafc; border-radius:8px;">
+                ${catImg ? `<img src="${catImg}" style="width:32px;height:32px;object-fit:cover;border-radius:8px;">` : `<div style="width:32px;height:32px;background:${cat?.color || '#ccc'};border-radius:8px;"></div>`}
+                <div style="flex:1;">
+                    <strong>${escapeHtml(getCategoryName(r.catId))}</strong>
+                    <div style="font-size:0.85rem; color:#64748b;">${formatCurrency(r.amount)} · ${r.percent.toFixed(2)}%</div>
+                </div>
+            </div>`;
+        }).join('') : '<div class="empty-state">Sin gastos extras este mes.</div>';
+    }
+    openModal('extraExpensesModal');
 };
 
 window.replicateBudgetToNextMonth = (budgetId) => {
