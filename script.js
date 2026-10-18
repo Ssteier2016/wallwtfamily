@@ -2600,20 +2600,38 @@ function renderAccountsList() {
     const container = document.getElementById('accountsList');
     if (!container) return;
     if (!Array.isArray(accounts) || accounts.length === 0) { container.innerHTML = '<div class="empty-state">No hay billeteras. Crea una nueva.</div>'; return; }
-    container.innerHTML = accounts.map(acc => `
+    container.innerHTML = accounts.map(acc => {
+        const accTx = Array.isArray(transactions) ? transactions : [];
+        const totalIngreso = accTx.filter(t => t.accId === acc.id && t.type === 'ingreso').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+        const totalGasto = accTx.filter(t => t.accId === acc.id && t.type === 'gasto').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+        const totalTransferSaliente = accTx.filter(t => t.accId === acc.id && t.type === 'transferencia').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+        const totalTransferEntrante = accTx.filter(t => t.destAccId === acc.id && t.type === 'transferencia').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+        const saldo = totalIngreso - totalGasto - totalTransferSaliente;
+        return `
         <div class="account-card">
             <div class="account-info">
                 <div class="account-icon ${acc.color}">
                     ${acc.imageUrl ? `<img src="${acc.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:12px;">` : `<i class="fas ${acc.icon}"></i>`}
                 </div>
-                <div class="account-details"><h4>${escapeHtml(acc.name)}</h4><span class="account-balance">${formatCurrency(acc.balance)}</span></div>
+                <div class="account-details">
+                    <h4>${escapeHtml(acc.name)}</h4>
+                    <span class="account-balance">${formatCurrency(acc.balance)}</span>
+                    <div style="margin-top:8px; font-size:0.78rem; color:#64748b; display:grid; gap:2px;">
+                        <div>Total Ingresos: <strong style="color:#10b981;">${formatCurrency(totalIngreso)}</strong></div>
+                        <div>Total Gastos: <strong style="color:#ef4444;">${formatCurrency(totalGasto)}</strong></div>
+                        <div>Transferencia Saliente: <strong style="color:#ef4444;">${formatCurrency(totalTransferSaliente)}</strong></div>
+                        <div>Transferencia Entrante: <strong style="color:#10b981;">${formatCurrency(totalTransferEntrante)}</strong></div>
+                        <div>Saldo: <strong style="color:${saldo >= 0 ? '#10b981' : '#ef4444'};">${formatCurrency(saldo)}</strong></div>
+                    </div>
+                </div>
             </div>
             <div class="account-actions">
                 <button class="btn-edit" onclick="editAccount('${acc.id}')"><i class="fas fa-pencil-alt"></i></button>
                 <button class="btn-delete" onclick="deleteAccountHandler('${acc.id}')"><i class="fas fa-trash-alt"></i></button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function renderCategoriesList() {
