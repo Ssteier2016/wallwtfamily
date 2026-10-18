@@ -2606,7 +2606,7 @@ function renderAccountsList() {
         const totalGasto = accTx.filter(t => t.accId === acc.id && t.type === 'gasto').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
         const totalTransferSaliente = accTx.filter(t => t.accId === acc.id && t.type === 'transferencia').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
         const totalTransferEntrante = accTx.filter(t => t.destAccId === acc.id && t.type === 'transferencia').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
-        const saldo = totalIngreso - totalGasto - totalTransferSaliente;
+        const saldo = totalIngreso - totalGasto - totalTransferSaliente + totalTransferEntrante;
         return `
         <div class="account-card">
             <div class="account-info">
